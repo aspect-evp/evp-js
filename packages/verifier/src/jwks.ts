@@ -6,7 +6,7 @@
 
 import type { IssuerMetadata } from '@aspect-evp/core';
 import { EVPError, WELL_KNOWN_PATH } from '@aspect-evp/core';
-import { type JWTVerifyGetKey, createLocalJWKSet, createRemoteJWKSet } from 'jose';
+import { createLocalJWKSet, createRemoteJWKSet, type JWTVerifyGetKey } from 'jose';
 
 /**
  * Cache for remote JWKS

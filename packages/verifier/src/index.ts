@@ -6,25 +6,6 @@
  * @packageDocumentation
  */
 
-// Main verifier class
-export { EmailVerificationVerifier } from './verifier.js';
-
-// DNS resolvers
-export {
-  createCachingResolver,
-  defaultDnsResolver,
-  nodeDnsResolver,
-  resolveIssuer,
-} from './dns.js';
-
-// JWKS utilities
-export {
-  clearJWKSCache,
-  createJWKSFetcher,
-  fetchIssuerMetadata,
-  getIssuerJWKS,
-} from './jwks.js';
-
 // Re-export commonly used types from @aspect-evp/core
 export type {
   DnsResolver,
@@ -33,7 +14,6 @@ export type {
   VerificationResult,
   VerifierConfig,
 } from '@aspect-evp/core';
-
 // Re-export utilities and errors from @aspect-evp/core
 export {
   DEFAULT_CLOCK_TOLERANCE,
@@ -45,3 +25,19 @@ export {
   toEVPError,
   WELL_KNOWN_PATH,
 } from '@aspect-evp/core';
+// DNS resolvers
+export {
+  createCachingResolver,
+  defaultDnsResolver,
+  nodeDnsResolver,
+  resolveIssuer,
+} from './dns.js';
+// JWKS utilities
+export {
+  clearJWKSCache,
+  createJWKSFetcher,
+  fetchIssuerMetadata,
+  getIssuerJWKS,
+} from './jwks.js';
+// Main verifier class
+export { EmailVerificationVerifier } from './verifier.js';

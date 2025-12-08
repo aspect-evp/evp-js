@@ -43,7 +43,7 @@ export interface IssuerMiddleware {
   handleIssuance(request: Request): Promise<HandleIssuanceResult>;
 }
 
-// Helper to create error result
+/** Create error result */
 function errorResult(
   status: number,
   error: string,
@@ -61,7 +61,15 @@ function errorResult(
   return result;
 }
 
-// Validate HTTP method
+/** Create success result */
+function successResult(issuanceToken: string): HandleIssuanceResult {
+  return {
+    status: 200,
+    body: { issuance_token: issuanceToken },
+  };
+}
+
+/** Validate HTTP method */
 function validateMethod(request: Request): HandleIssuanceResult | null {
   if (request.method !== 'POST') {
     return errorResult(405, 'invalid_request', 'Method must be POST', { Allow: 'POST' });
@@ -69,7 +77,7 @@ function validateMethod(request: Request): HandleIssuanceResult | null {
   return null;
 }
 
-// Validate Content-Type header
+/** Validate Content-Type header */
 function validateContentType(request: Request): HandleIssuanceResult | null {
   const contentType = request.headers.get('Content-Type');
   if (!contentType?.includes('application/x-www-form-urlencoded')) {
@@ -82,13 +90,63 @@ function validateContentType(request: Request): HandleIssuanceResult | null {
   return null;
 }
 
-// Validate Sec-Fetch-Dest header
+/** Validate Sec-Fetch-Dest header */
 function validateSecFetchDest(request: Request): HandleIssuanceResult | null {
   const secFetchDest = request.headers.get('Sec-Fetch-Dest');
   if (secFetchDest !== 'email-verification') {
     return errorResult(400, 'invalid_request', 'Missing or invalid Sec-Fetch-Dest header');
   }
   return null;
+}
+
+/** Validate all request headers and method */
+function validateRequest(request: Request): HandleIssuanceResult | null {
+  return validateMethod(request) || validateContentType(request) || validateSecFetchDest(request);
+}
+
+/** Extract request token from form data */
+async function extractRequestToken(request: Request): Promise<string | HandleIssuanceResult> {
+  const formData = await request.formData();
+  const requestToken = formData.get('request_token');
+
+  if (!requestToken || typeof requestToken !== 'string') {
+    return errorResult(400, 'invalid_request', 'Missing request_token parameter');
+  }
+
+  return requestToken;
+}
+
+/** Verify user owns the email address */
+async function verifyEmailOwnership(
+  request: Request,
+  email: string,
+  verifyUserOwnsEmail: VerifyUserOwnsEmail
+): Promise<HandleIssuanceResult | null> {
+  const cookie = request.headers.get('Cookie') ?? '';
+  const ownsEmail = await verifyUserOwnsEmail(cookie, email);
+
+  if (!ownsEmail) {
+    return errorResult(
+      401,
+      'authentication_required',
+      'User must be authenticated and control the email'
+    );
+  }
+
+  return null;
+}
+
+/** Handle error and convert to result */
+function handleError(error: unknown): HandleIssuanceResult {
+  if (isEVPError(error)) {
+    return {
+      status: error.getHttpStatus(),
+      body: error.toJSON(),
+    };
+  }
+
+  console.error('EVP issuance error:', error);
+  return errorResult(500, 'server_error', 'Internal server error');
 }
 
 /**
@@ -113,56 +171,31 @@ export function createIssuerMiddleware(
   return {
     async handleIssuance(request: Request): Promise<HandleIssuanceResult> {
       try {
-        // Validate request
-        const methodError = validateMethod(request);
-        if (methodError) return methodError;
+        // Validate request headers and method
+        const validationError = validateRequest(request);
+        if (validationError) return validationError;
 
-        const contentTypeError = validateContentType(request);
-        if (contentTypeError) return contentTypeError;
-
-        const secFetchError = validateSecFetchDest(request);
-        if (secFetchError) return secFetchError;
-
-        // Parse request body
-        const formData = await request.formData();
-        const requestToken = formData.get('request_token');
-
-        if (!requestToken || typeof requestToken !== 'string') {
-          return errorResult(400, 'invalid_request', 'Missing request_token parameter');
-        }
+        // Extract request token
+        const tokenResult = await extractRequestToken(request);
+        if (typeof tokenResult !== 'string') return tokenResult;
+        const requestToken = tokenResult;
 
         // Verify the request token
         const { payload, browserPublicKey } = await issuer.verifyRequestToken(requestToken);
 
         // Check if user owns this email
-        const cookie = request.headers.get('Cookie') ?? '';
-        const ownsEmail = await verifyUserOwnsEmail(cookie, payload.email);
-
-        if (!ownsEmail) {
-          return errorResult(
-            401,
-            'authentication_required',
-            'User must be authenticated and control the email'
-          );
-        }
+        const ownershipError = await verifyEmailOwnership(
+          request,
+          payload.email,
+          verifyUserOwnsEmail
+        );
+        if (ownershipError) return ownershipError;
 
         // Issue the token
         const issuanceToken = await issuer.issueToken(payload.email, browserPublicKey);
-
-        return {
-          status: 200,
-          body: { issuance_token: issuanceToken },
-        };
+        return successResult(issuanceToken);
       } catch (error) {
-        if (isEVPError(error)) {
-          return {
-            status: error.getHttpStatus(),
-            body: error.toJSON(),
-          };
-        }
-
-        console.error('EVP issuance error:', error);
-        return errorResult(500, 'server_error', 'Internal server error');
+        return handleError(error);
       }
     },
   };

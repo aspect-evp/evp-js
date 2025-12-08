@@ -14,14 +14,14 @@ import type {
 } from '@aspect-evp/core';
 import {
   DEFAULT_CLOCK_TOLERANCE,
-  EVPError,
-  KB_JWT_TYPE,
-  SD_JWT_TYPE,
   decodeJWTHeader,
   decodeJWTPayload,
+  EVPError,
   getEmailDomain,
   isTimestampValid,
+  KB_JWT_TYPE,
   parseSDJWTKB,
+  SD_JWT_TYPE,
   sha256,
 } from '@aspect-evp/core';
 import { type JWK, jwtVerify } from 'jose';

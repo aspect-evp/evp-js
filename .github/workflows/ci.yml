@@ -71,7 +71,6 @@ jobs:
 
       - name: Check packages
         run: |
-          cd packages/core && pnpm pack --dry-run
-          cd ../issuer && pnpm pack --dry-run
-          cd ../verifier && pnpm pack --dry-run
-          cd ../cli && pnpm pack --dry-run
+          pnpm -r exec pnpm pack
+          ls -la packages/*/*.tgz
+          rm packages/*/*.tgz

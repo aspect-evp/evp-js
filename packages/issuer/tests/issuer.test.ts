@@ -1,5 +1,5 @@
-import { EVPError, WELL_KNOWN_PATH, getCurrentTimestamp } from '@aspect-evp/core';
-import { SignJWT, importJWK } from 'jose';
+import { EVPError, getCurrentTimestamp, WELL_KNOWN_PATH } from '@aspect-evp/core';
+import { importJWK, SignJWT } from 'jose';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { EmailVerificationIssuer } from '../src/issuer.js';
 import { generateKeyPair } from '../src/keys.js';

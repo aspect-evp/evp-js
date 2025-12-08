@@ -8,5 +8,5 @@
  */
 
 export { createMockResolver, MockDnsResolver } from './mock-dns.js';
-export { createTestFlow, generateNonce } from './test-flow.js';
 export type { TestFlow, TestFlowConfig } from './test-flow.js';
+export { createTestFlow, generateNonce } from './test-flow.js';

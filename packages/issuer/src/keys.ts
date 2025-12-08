@@ -5,8 +5,7 @@
  */
 
 import type { KeyPair, SupportedAlgorithm } from '@aspect-evp/core';
-import { DEFAULT_ALGORITHM, SUPPORTED_ALGORITHMS } from '@aspect-evp/core';
-import { EVPError } from '@aspect-evp/core';
+import { DEFAULT_ALGORITHM, EVPError, SUPPORTED_ALGORITHMS } from '@aspect-evp/core';
 import { exportJWK, generateKeyPair as joseGenerateKeyPair } from 'jose';
 
 /**

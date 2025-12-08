@@ -1,5 +1,5 @@
 import { EVPError, getCurrentTimestamp, sha256 } from '@aspect-evp/core';
-import { SignJWT, exportJWK, generateKeyPair } from 'jose';
+import { exportJWK, generateKeyPair, SignJWT } from 'jose';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { EmailVerificationVerifier } from '../src/verifier.js';
 

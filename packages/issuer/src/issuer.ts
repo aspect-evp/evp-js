@@ -17,14 +17,14 @@ import type {
 import {
   DEFAULT_ALGORITHM,
   DEFAULT_CLOCK_TOLERANCE,
-  EVPError,
-  SD_JWT_TYPE,
-  WELL_KNOWN_PATH,
   decodeJWTHeader,
+  EVPError,
   getCurrentTimestamp,
   isTimestampValid,
+  SD_JWT_TYPE,
+  WELL_KNOWN_PATH,
 } from '@aspect-evp/core';
-import { type JWK, SignJWT, exportJWK, importJWK, jwtVerify } from 'jose';
+import { importJWK, type JWK, jwtVerify, SignJWT } from 'jose';
 import { generateKeyPair, isAlgorithmSupported } from './keys.js';
 
 /**
@@ -105,16 +105,18 @@ export class EmailVerificationIssuer {
    *
    * @returns JWKS with the issuer's public key(s)
    */
-  async getJWKS(): Promise<JWKS> {
-    // Import the private key to extract public key
-    const privateKey = await importJWK(this.config.privateKey as JWK, this.config.algorithm);
-
-    // Export the public key
-    const fullJwk = await exportJWK(privateKey);
-
-    // Create public key by extracting only public components
+  getJWKS(): JWKS {
+    // Extract public components from the private key JWK
     // The destructured private key components are intentionally unused
-    const { d: _d, p: _p, q: _q, dp: _dp, dq: _dq, qi: _qi, ...publicComponents } = fullJwk;
+    const {
+      d: _d,
+      p: _p,
+      q: _q,
+      dp: _dp,
+      dq: _dq,
+      qi: _qi,
+      ...publicComponents
+    } = this.config.privateKey as Record<string, unknown>;
 
     // Build public JWK with required fields for JWKS
     const publicJwk = {

@@ -6,6 +6,7 @@
  * @packageDocumentation
  */
 
+export type { SupportedAlgorithm } from './constants.js';
 // Constants
 export {
   DEFAULT_ALGORITHM,
@@ -16,8 +17,8 @@ export {
   SUPPORTED_ALGORITHMS,
   WELL_KNOWN_PATH,
 } from './constants.js';
-export type { SupportedAlgorithm } from './constants.js';
-
+// Errors
+export { EVPError, isEVPError, toEVPError } from './errors.js';
 // Types
 export type {
   DnsResolver,
@@ -37,9 +38,6 @@ export type {
   VerificationResult,
   VerifierConfig,
 } from './types.js';
-
-// Errors
-export { EVPError, isEVPError, toEVPError } from './errors.js';
 
 // Utilities
 export {

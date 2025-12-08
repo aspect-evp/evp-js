@@ -1,11 +1,11 @@
 // Public API for programmatic usage
 export {
-  keygenCommand,
-  issueCommand,
-  verifyCommand,
-  inspectCommand,
-  testCommand,
   dnsCommand,
+  inspectCommand,
+  issueCommand,
+  keygenCommand,
+  testCommand,
+  verifyCommand,
 } from './commands/index.js';
 
 // Re-export utilities for custom CLI tools
