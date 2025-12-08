@@ -11,7 +11,7 @@ import type {
   KeyBindingPayload,
   VerificationResult,
   VerifierConfig,
-} from '@evp/core';
+} from '@aspect-evp/core';
 import {
   DEFAULT_CLOCK_TOLERANCE,
   EVPError,
@@ -23,7 +23,7 @@ import {
   isTimestampValid,
   parseSDJWTKB,
   sha256,
-} from '@evp/core';
+} from '@aspect-evp/core';
 import { type JWK, jwtVerify } from 'jose';
 import { defaultDnsResolver, resolveIssuer } from './dns.js';
 import { createJWKSFetcher, fetchIssuerMetadata } from './jwks.js';

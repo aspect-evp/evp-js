@@ -1,4 +1,4 @@
-import { getCurrentTimestamp } from '@evp/core';
+import { getCurrentTimestamp } from '@aspect-evp/core';
 import { SignJWT, importJWK } from 'jose';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { EmailVerificationIssuer } from '../src/issuer.js';

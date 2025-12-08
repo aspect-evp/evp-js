@@ -16,7 +16,7 @@ import type { DnsResolver } from '../types.js';
  *
  * @example
  * ```typescript
- * import { MockDnsResolver } from '@evp/core/testing';
+ * import { MockDnsResolver } from '@aspect-evp/core/testing';
  *
  * const mockDns = new MockDnsResolver();
  * mockDns.addRecord('gmail.com', 'accounts.google.com');

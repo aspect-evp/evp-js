@@ -1,4 +1,4 @@
-import { EVPError } from '@evp/core';
+import { EVPError } from '@aspect-evp/core';
 import { describe, expect, it, vi } from 'vitest';
 import { createCachingResolver, resolveIssuer } from '../src/dns.js';
 

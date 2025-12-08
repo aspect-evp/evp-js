@@ -1,5 +1,5 @@
 /**
- * @evp/issuer
+ * @aspect-evp/issuer
  *
  * EVP issuer implementation for email providers.
  *
@@ -22,7 +22,7 @@ export type {
   VerifyUserOwnsEmail,
 } from './middleware.js';
 
-// Re-export commonly used types from @evp/core
+// Re-export commonly used types from @aspect-evp/core
 export type {
   IssuerConfig,
   IssuerMetadata,
@@ -31,9 +31,9 @@ export type {
   RequestTokenPayload,
   RequestTokenVerifyResult,
   SupportedAlgorithm,
-} from '@evp/core';
+} from '@aspect-evp/core';
 
-// Re-export utilities and errors from @evp/core
+// Re-export utilities and errors from @aspect-evp/core
 export {
   DEFAULT_ALGORITHM,
   DEFAULT_CLOCK_TOLERANCE,
@@ -43,4 +43,4 @@ export {
   SUPPORTED_ALGORITHMS,
   toEVPError,
   WELL_KNOWN_PATH,
-} from '@evp/core';
+} from '@aspect-evp/core';

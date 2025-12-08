@@ -4,7 +4,7 @@
  * Provides framework-agnostic middleware for handling EVP issuance requests.
  */
 
-import { isEVPError } from '@evp/core';
+import { isEVPError } from '@aspect-evp/core';
 import type { EmailVerificationIssuer } from './issuer.js';
 
 /**

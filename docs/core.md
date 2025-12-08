@@ -1,10 +1,10 @@
-# @evp/core
+# @aspect-evp/core
 
 > Shared types, constants, and utilities for the Email Verification Protocol.
 
 ## Overview
 
-`@evp/core` is the foundation package that provides:
+`@aspect-evp/core` is the foundation package that provides:
 
 - TypeScript type definitions for all EVP data structures
 - Utility functions for parsing and validating tokens
@@ -16,7 +16,7 @@
 ## Installation
 
 ```bash
-npm install @evp/core
+npm install @aspect-evp/core
 ```
 
 ## API Reference
@@ -205,7 +205,7 @@ function parseSDJWTKB(token: string): {
 
 **Example:**
 ```typescript
-import { parseSDJWTKB } from '@evp/core';
+import { parseSDJWTKB } from '@aspect-evp/core';
 
 const token = 'eyJhbGciOiJFZERTQSJ9.eyJpc3MiOiJpc3N1ZXIifQ.signature~eyJhbGciOiJFZERTQSJ9.eyJhdWQiOiJycCJ9.sig2';
 
@@ -224,7 +224,7 @@ function getEmailDomain(email: string): string;
 
 **Example:**
 ```typescript
-import { getEmailDomain } from '@evp/core';
+import { getEmailDomain } from '@aspect-evp/core';
 
 getEmailDomain('user@gmail.com'); // 'gmail.com'
 getEmailDomain('admin@mail.company.co.uk'); // 'mail.company.co.uk'
@@ -252,7 +252,7 @@ async function sha256(data: string): Promise<string>;
 
 **Example:**
 ```typescript
-import { sha256 } from '@evp/core';
+import { sha256 } from '@aspect-evp/core';
 
 const hash = await sha256('hello world');
 // 'uU0nuZNNPgilLlLX2n2r-sSE7-N6U4DukIj3rOLvzek'
@@ -303,8 +303,8 @@ export const KB_JWT_TYPE = 'kb+jwt';
 Creates a complete test environment with mocks for EVP integration tests:
 
 ```typescript
-import { createTestFlow } from '@evp/core/testing';
-import { EmailVerificationVerifier } from '@evp/verifier';
+import { createTestFlow } from '@aspect-evp/core/testing';
+import { EmailVerificationVerifier } from '@aspect-evp/verifier';
 
 const testFlow = await createTestFlow({
   issuer: 'issuer.example.com',
@@ -339,7 +339,7 @@ console.log(result.email); // 'user@example.com'
 A configurable mock DNS resolver for testing multiple domains:
 
 ```typescript
-import { MockDnsResolver } from '@evp/core/testing';
+import { MockDnsResolver } from '@aspect-evp/core/testing';
 
 const mockDns = new MockDnsResolver();
 mockDns.addRecord('gmail.com', 'accounts.google.com');
@@ -356,7 +356,7 @@ const verifier = new EmailVerificationVerifier({
 Simple function-based mock for quick tests:
 
 ```typescript
-import { createMockResolver } from '@evp/core/testing';
+import { createMockResolver } from '@aspect-evp/core/testing';
 
 const resolver = createMockResolver({
   'gmail.com': 'accounts.google.com',
@@ -369,7 +369,7 @@ const resolver = createMockResolver({
 Generates a cryptographically random nonce:
 
 ```typescript
-import { generateNonce } from '@evp/core/testing';
+import { generateNonce } from '@aspect-evp/core/testing';
 
 const nonce = generateNonce(); // 16 bytes, base64url encoded
 ```
@@ -403,8 +403,8 @@ This package is designed to be minimal:
 ### What This Package Does NOT Provide
 
 1. **HTTP clients** - You bring your own `fetch`
-2. **DNS resolution** - Provided by `@evp/verifier`
-3. **Key generation** - Provided by `@evp/issuer`
+2. **DNS resolution** - Provided by `@aspect-evp/verifier`
+3. **Key generation** - Provided by `@aspect-evp/issuer`
 4. **Framework integrations** - This is framework-agnostic
 
 ### Known Limitations

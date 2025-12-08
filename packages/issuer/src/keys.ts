@@ -4,9 +4,9 @@
  * Provides utilities for generating signing keypairs for EVP token issuance.
  */
 
-import type { KeyPair, SupportedAlgorithm } from '@evp/core';
-import { DEFAULT_ALGORITHM, SUPPORTED_ALGORITHMS } from '@evp/core';
-import { EVPError } from '@evp/core';
+import type { KeyPair, SupportedAlgorithm } from '@aspect-evp/core';
+import { DEFAULT_ALGORITHM, SUPPORTED_ALGORITHMS } from '@aspect-evp/core';
+import { EVPError } from '@aspect-evp/core';
 import { exportJWK, generateKeyPair as joseGenerateKeyPair } from 'jose';
 
 /**

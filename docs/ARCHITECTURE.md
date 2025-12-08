@@ -7,7 +7,7 @@ This document explains the architectural decisions behind the EVP libraries.
 ```
 evp/
 ├── packages/
-│   ├── core/                 # @evp/core
+│   ├── core/                 # @aspect-evp/core
 │   │   ├── src/
 │   │   │   ├── index.ts      # Public exports
 │   │   │   ├── types.ts      # Type definitions
@@ -21,7 +21,7 @@ evp/
 │   │   ├── package.json
 │   │   └── tsconfig.json
 │   │
-│   ├── issuer/               # @evp/issuer
+│   ├── issuer/               # @aspect-evp/issuer
 │   │   ├── src/
 │   │   │   ├── index.ts      # Public exports
 │   │   │   ├── issuer.ts     # EmailVerificationIssuer class
@@ -30,7 +30,7 @@ evp/
 │   │   ├── package.json
 │   │   └── tsconfig.json
 │   │
-│   └── verifier/             # @evp/verifier
+│   └── verifier/             # @aspect-evp/verifier
 │       ├── src/
 │       │   ├── index.ts      # Public exports
 │       │   ├── verifier.ts   # EmailVerificationVerifier class
@@ -133,7 +133,7 @@ new EmailVerificationVerifier(); // ❌ Dangerous - what if request is spoofed?
 - Mock components enable unit testing
 
 **Implementation:**
-- `@evp/core/testing` exports test utilities
+- `@aspect-evp/core/testing` exports test utilities
 - `createTestFlow()` simulates entire protocol
 - `MockDnsResolver` for controlled DNS responses
 
@@ -288,9 +288,9 @@ if (diff > clockTolerance) {
 
 | Package | Target | Notes |
 |---------|--------|-------|
-| @evp/core | <2KB | Types + utils only |
-| @evp/issuer | <5KB | + jose imports |
-| @evp/verifier | <5KB | + jose imports |
+| @aspect-evp/core | <2KB | Types + utils only |
+| @aspect-evp/issuer | <5KB | + jose imports |
+| @aspect-evp/verifier | <5KB | + jose imports |
 | jose (shared) | ~8KB | Tree-shaken |
 | **Total** | **<15KB** | gzipped |
 
@@ -304,7 +304,7 @@ if (diff > clockTolerance) {
 
 ### Runtime Support
 
-| Runtime | @evp/core | @evp/issuer | @evp/verifier |
+| Runtime | @aspect-evp/core | @aspect-evp/issuer | @aspect-evp/verifier |
 |---------|-----------|-------------|---------------|
 | Node.js 18+ | ✅ | ✅ | ✅ |
 | Node.js 16-17 | ✅ | ✅ | ✅ (DoH only) |

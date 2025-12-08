@@ -1,4 +1,4 @@
-import { EVPError } from '@evp/core';
+import { EVPError } from '@aspect-evp/core';
 import { describe, expect, it } from 'vitest';
 import { generateKeyPair, getCurveForAlgorithm, isAlgorithmSupported } from '../src/keys.js';
 

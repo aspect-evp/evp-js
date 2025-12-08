@@ -4,8 +4,8 @@
  * Provides DNS resolvers for discovering EVP issuers via TXT records.
  */
 
-import type { DnsResolver } from '@evp/core';
-import { DNS_RECORD_PREFIX, EVPError } from '@evp/core';
+import type { DnsResolver } from '@aspect-evp/core';
+import { DNS_RECORD_PREFIX, EVPError } from '@aspect-evp/core';
 
 /**
  * DNS-over-HTTPS response structure
@@ -102,7 +102,7 @@ export const defaultDnsResolver: DnsResolver = async (
  *
  * @example
  * ```typescript
- * import { nodeDnsResolver } from '@evp/verifier';
+ * import { nodeDnsResolver } from '@aspect-evp/verifier';
  *
  * const verifier = new EmailVerificationVerifier({
  *   rpOrigin: 'https://myapp.com',

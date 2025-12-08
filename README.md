@@ -60,9 +60,9 @@ This monorepo contains three packages:
 
 | Package | Description | Status |
 |---------|-------------|--------|
-| [`@evp/core`](./docs/core.md) | Shared types, constants, and utilities | ✅ Implemented |
-| [`@evp/issuer`](./docs/issuer.md) | EVP issuer implementation for email providers | ✅ Implemented |
-| [`@evp/verifier`](./docs/verifier.md) | EVP verifier implementation for web apps (RPs) | ✅ Implemented |
+| [`@aspect-evp/core`](./docs/core.md) | Shared types, constants, and utilities | ✅ Implemented |
+| [`@aspect-evp/issuer`](./docs/issuer.md) | EVP issuer implementation for email providers | ✅ Implemented |
+| [`@aspect-evp/verifier`](./docs/verifier.md) | EVP verifier implementation for web apps (RPs) | ✅ Implemented |
 
 ## Architecture Overview
 
@@ -72,8 +72,8 @@ sequenceDiagram
     participant User
     participant Browser as Browser<br/>(Native)
     participant DNS
-    participant Issuer as Issuer<br/>(@evp/issuer)
-    participant RP as RP<br/>(@evp/verifier)
+    participant Issuer as Issuer<br/>(@aspect-evp/issuer)
+    participant RP as RP<br/>(@aspect-evp/verifier)
 
     User->>Browser: Focus on email field
     Browser->>User: Show email picker
@@ -102,19 +102,19 @@ sequenceDiagram
 ```
 
 > **Note:** Steps 1-3 and the `emailverified` event require **native browser support** (not yet available).
-> This library implements the **server-side components**: `@evp/issuer` (steps 4-5) and `@evp/verifier` (verification).
+> This library implements the **server-side components**: `@aspect-evp/issuer` (steps 4-5) and `@aspect-evp/verifier` (verification).
 
 ## Installation
 
 ```bash
 # Using npm
-npm install @evp/core @evp/issuer @evp/verifier
+npm install @aspect-evp/core @aspect-evp/issuer @aspect-evp/verifier
 
 # Using pnpm
-pnpm add @evp/core @evp/issuer @evp/verifier
+pnpm add @aspect-evp/core @aspect-evp/issuer @aspect-evp/verifier
 
 # Using yarn
-yarn add @evp/core @evp/issuer @evp/verifier
+yarn add @aspect-evp/core @aspect-evp/issuer @aspect-evp/verifier
 ```
 
 ## Quick Start
@@ -122,7 +122,7 @@ yarn add @evp/core @evp/issuer @evp/verifier
 ### For Email Providers (Issuer)
 
 ```typescript
-import { EmailVerificationIssuer } from '@evp/issuer';
+import { EmailVerificationIssuer } from '@aspect-evp/issuer';
 
 // Initialize with your signing key
 const issuer = new EmailVerificationIssuer({
@@ -151,7 +151,7 @@ app.post('/email-verification/issuance', async (req, res) => {
 ### For Web Applications (Verifier/RP)
 
 ```typescript
-import { EmailVerificationVerifier } from '@evp/verifier';
+import { EmailVerificationVerifier } from '@aspect-evp/verifier';
 
 const verifier = new EmailVerificationVerifier({
   rpOrigin: 'https://myapp.example.com'
@@ -178,8 +178,8 @@ async function handleEmailVerification(sdJwtKb: string, sessionNonce: string) {
 Since browsers don't yet support EVP, you can test the protocol using our test utilities:
 
 ```typescript
-import { createTestFlow } from '@evp/core/testing';
-import { EmailVerificationVerifier } from '@evp/verifier';
+import { createTestFlow } from '@aspect-evp/core/testing';
+import { EmailVerificationVerifier } from '@aspect-evp/verifier';
 
 // Create test fixtures with mock DNS and JWKS
 const testFlow = await createTestFlow({
@@ -208,7 +208,7 @@ console.log(result.email); // 'user@example.com'
 
 We evaluated the OpenWallet Foundation's SD-JWT implementation and decided to build a minimal, EVP-specific solution:
 
-| Factor | `@sd-jwt/*` | `@evp/*` |
+| Factor | `@sd-jwt/*` | `@aspect-evp/*` |
 |--------|-------------|----------|
 | Focus | Generic SD-JWT/VC | EVP-specific |
 | Packages | 10+ interdependent | 3 focused |
@@ -273,7 +273,7 @@ We welcome contributions! This project is specifically designed to:
 
 ```bash
 # Clone the repository
-git clone https://github.com/evp-js/evp.git
+git clone https://github.com/aspect-evp/evp-js.git
 cd evp
 
 # Install dependencies
@@ -292,9 +292,9 @@ pnpm test:coverage
 ## Roadmap
 
 ### Phase 1: Core Implementation ✅
-- [x] `@evp/core` - Types, constants, utilities
-- [x] `@evp/issuer` - Issuer implementation
-- [x] `@evp/verifier` - Verifier implementation
+- [x] `@aspect-evp/core` - Types, constants, utilities
+- [x] `@aspect-evp/issuer` - Issuer implementation
+- [x] `@aspect-evp/verifier` - Verifier implementation
 - [x] Test suite (144 tests, 80%+ coverage)
 - [x] Testing utilities (`createTestFlow`, `MockDnsResolver`)
 

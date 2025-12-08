@@ -4,7 +4,7 @@ Este documento es una guía para implementar los paquetes EVP con Claude Code.
 
 ## Orden de Implementación
 
-### Fase 1: @evp/core (Prioridad Alta)
+### Fase 1: @aspect-evp/core (Prioridad Alta)
 
 Implementar primero ya que es dependencia de los otros paquetes.
 
@@ -81,7 +81,7 @@ packages/core/src/
 
 ---
 
-### Fase 2: @evp/issuer (Prioridad Alta)
+### Fase 2: @aspect-evp/issuer (Prioridad Alta)
 
 Implementar después de core.
 
@@ -132,7 +132,7 @@ packages/issuer/src/
 
 ---
 
-### Fase 3: @evp/verifier (Prioridad Alta)
+### Fase 3: @aspect-evp/verifier (Prioridad Alta)
 
 Implementar después de core.
 
@@ -183,7 +183,7 @@ packages/verifier/src/
 
 ### Fase 4: Testing Utilities (Prioridad Media)
 
-Completar utilidades de testing en @evp/core.
+Completar utilidades de testing en @aspect-evp/core.
 
 #### 4.1 Implementación de test-flow.ts
 

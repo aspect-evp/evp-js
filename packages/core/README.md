@@ -1,14 +1,14 @@
-# @evp/core
+# @aspect-evp/core
 
 > Shared types, constants, and utilities for the Email Verification Protocol.
 
-[![npm version](https://img.shields.io/npm/v/@evp/core.svg)](https://www.npmjs.com/package/@evp/core)
+[![npm version](https://img.shields.io/npm/v/@aspect-evp/core.svg)](https://www.npmjs.com/package/@aspect-evp/core)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## Installation
 
 ```bash
-npm install @evp/core
+npm install @aspect-evp/core
 ```
 
 ## Usage
@@ -21,7 +21,7 @@ import {
   getEmailDomain,
   SD_JWT_TYPE,
   KB_JWT_TYPE,
-} from '@evp/core';
+} from '@aspect-evp/core';
 
 // Parse SD-JWT+KB token
 const { sdJwt, kbJwt, sdJwtForHash } = parseSDJWTKB(token);
@@ -36,7 +36,7 @@ const hash = await sha256(sdJwt);
 ## Testing Utilities
 
 ```typescript
-import { createTestFlow, MockDnsResolver } from '@evp/core/testing';
+import { createTestFlow, MockDnsResolver } from '@aspect-evp/core/testing';
 
 // Create test fixtures
 const testFlow = await createTestFlow({

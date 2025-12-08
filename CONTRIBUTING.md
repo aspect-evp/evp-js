@@ -13,7 +13,7 @@ Thank you for your interest in contributing to the Email Verification Protocol l
 
 ```bash
 # Clone the repository
-git clone https://github.com/evp-js/evp.git
+git clone https://github.com/aspect-evp/evp-js.git
 cd evp
 
 # Install dependencies
@@ -86,7 +86,7 @@ pnpm test
 
 - Write tests for all new functionality
 - Maintain >80% code coverage
-- Use the testing utilities in `@evp/core/testing`
+- Use the testing utilities in `@aspect-evp/core/testing`
 
 ### Commit Messages
 

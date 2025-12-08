@@ -1,5 +1,5 @@
 /**
- * @evp/verifier
+ * @aspect-evp/verifier
  *
  * EVP token verification for web applications (Relying Parties).
  *
@@ -25,16 +25,16 @@ export {
   getIssuerJWKS,
 } from './jwks.js';
 
-// Re-export commonly used types from @evp/core
+// Re-export commonly used types from @aspect-evp/core
 export type {
   DnsResolver,
   IssuerMetadata,
   KeyBindingPayload,
   VerificationResult,
   VerifierConfig,
-} from '@evp/core';
+} from '@aspect-evp/core';
 
-// Re-export utilities and errors from @evp/core
+// Re-export utilities and errors from @aspect-evp/core
 export {
   DEFAULT_CLOCK_TOLERANCE,
   DNS_RECORD_PREFIX,
@@ -44,4 +44,4 @@ export {
   SD_JWT_TYPE,
   toEVPError,
   WELL_KNOWN_PATH,
-} from '@evp/core';
+} from '@aspect-evp/core';

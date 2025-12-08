@@ -89,8 +89,8 @@ export interface TestFlow {
  *
  * @example
  * ```typescript
- * import { createTestFlow } from '@evp/core/testing';
- * import { EmailVerificationVerifier } from '@evp/verifier';
+ * import { createTestFlow } from '@aspect-evp/core/testing';
+ * import { EmailVerificationVerifier } from '@aspect-evp/verifier';
  *
  * const testFlow = await createTestFlow({
  *   issuer: 'issuer.example.com',

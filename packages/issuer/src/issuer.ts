@@ -13,7 +13,7 @@ import type {
   RequestTokenPayload,
   RequestTokenVerifyResult,
   SupportedAlgorithm,
-} from '@evp/core';
+} from '@aspect-evp/core';
 import {
   DEFAULT_ALGORITHM,
   DEFAULT_CLOCK_TOLERANCE,
@@ -23,7 +23,7 @@ import {
   decodeJWTHeader,
   getCurrentTimestamp,
   isTimestampValid,
-} from '@evp/core';
+} from '@aspect-evp/core';
 import { type JWK, SignJWT, exportJWK, importJWK, jwtVerify } from 'jose';
 import { generateKeyPair, isAlgorithmSupported } from './keys.js';
 

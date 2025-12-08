@@ -1,5 +1,5 @@
 /**
- * @evp/core/testing
+ * @aspect-evp/core/testing
  *
  * Testing utilities for EVP implementations.
  *

@@ -4,8 +4,8 @@
  * Provides utilities for fetching issuer metadata and JWKS.
  */
 
-import type { IssuerMetadata } from '@evp/core';
-import { EVPError, WELL_KNOWN_PATH } from '@evp/core';
+import type { IssuerMetadata } from '@aspect-evp/core';
+import { EVPError, WELL_KNOWN_PATH } from '@aspect-evp/core';
 import { type JWTVerifyGetKey, createLocalJWKSet, createRemoteJWKSet } from 'jose';
 
 /**

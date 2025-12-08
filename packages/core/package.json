@@ -1,5 +1,5 @@
 {
-  "name": "@evp/core",
+  "name": "@aspect-evp/core",
   "version": "0.1.0",
   "description": "Shared types and utilities for the Email Verification Protocol",
   "type": "module",
@@ -36,7 +36,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/evp-js/evp.git",
+    "url": "https://github.com/aspect-evp/evp-js.git",
     "directory": "packages/core"
   },
   "dependencies": {

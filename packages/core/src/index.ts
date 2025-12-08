@@ -1,5 +1,5 @@
 /**
- * @evp/core
+ * @aspect-evp/core
  *
  * Shared types, constants, and utilities for the Email Verification Protocol.
  *

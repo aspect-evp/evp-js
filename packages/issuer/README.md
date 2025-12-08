@@ -1,20 +1,20 @@
-# @evp/issuer
+# @aspect-evp/issuer
 
 > EVP issuer implementation for email providers.
 
-[![npm version](https://img.shields.io/npm/v/@evp/issuer.svg)](https://www.npmjs.com/package/@evp/issuer)
+[![npm version](https://img.shields.io/npm/v/@aspect-evp/issuer.svg)](https://www.npmjs.com/package/@aspect-evp/issuer)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## Installation
 
 ```bash
-npm install @evp/issuer
+npm install @aspect-evp/issuer
 ```
 
 ## Usage
 
 ```typescript
-import { EmailVerificationIssuer } from '@evp/issuer';
+import { EmailVerificationIssuer } from '@aspect-evp/issuer';
 
 // Initialize with your signing key
 const issuer = new EmailVerificationIssuer({
@@ -55,7 +55,7 @@ app.post('/email-verification/issuance', async (req, res) => {
 ## Key Generation
 
 ```typescript
-import { EmailVerificationIssuer } from '@evp/issuer';
+import { EmailVerificationIssuer } from '@aspect-evp/issuer';
 
 // Generate a new EdDSA key pair
 const keyPair = await EmailVerificationIssuer.generateKeyPair('EdDSA');

@@ -1,10 +1,10 @@
-# @evp/issuer
+# @aspect-evp/issuer
 
 > EVP issuer implementation for email providers.
 
 ## Overview
 
-`@evp/issuer` provides everything an email provider needs to implement the Email Verification Protocol. It handles:
+`@aspect-evp/issuer` provides everything an email provider needs to implement the Email Verification Protocol. It handles:
 
 - Generating issuer metadata (`/.well-known/email-verification`)
 - Serving JWKS (JSON Web Key Set)
@@ -24,7 +24,7 @@ This package is for **email providers** who want to enable their users to verify
 ## Installation
 
 ```bash
-npm install @evp/issuer @evp/core
+npm install @aspect-evp/issuer @aspect-evp/core
 ```
 
 ## Dependencies
@@ -32,7 +32,7 @@ npm install @evp/issuer @evp/core
 | Package | Why |
 |---------|-----|
 | `jose` | JWT signing/verification, JWKS generation |
-| `@evp/core` | Shared types and utilities |
+| `@aspect-evp/core` | Shared types and utilities |
 
 ## Quick Start
 
@@ -41,7 +41,7 @@ npm install @evp/issuer @evp/core
 First, generate a signing keypair. This should be done once and stored securely:
 
 ```typescript
-import { EmailVerificationIssuer } from '@evp/issuer';
+import { EmailVerificationIssuer } from '@aspect-evp/issuer';
 
 // Generate a new EdDSA keypair
 const { privateKey, publicKey } = await EmailVerificationIssuer.generateKeyPair('EdDSA');
@@ -54,7 +54,7 @@ console.log('Public Key:', JSON.stringify(publicKey));
 ### 2. Initialize the Issuer
 
 ```typescript
-import { EmailVerificationIssuer } from '@evp/issuer';
+import { EmailVerificationIssuer } from '@aspect-evp/issuer';
 
 const issuer = new EmailVerificationIssuer({
   // Your email domain (eTLD+1)
@@ -228,7 +228,7 @@ const { privateKey, publicKey } = await EmailVerificationIssuer.generateKeyPair(
 Creates request handlers for common frameworks:
 
 ```typescript
-import { createIssuerMiddleware } from '@evp/issuer';
+import { createIssuerMiddleware } from '@aspect-evp/issuer';
 
 const middleware = createIssuerMiddleware(
   issuer,
@@ -250,7 +250,7 @@ app.post('/email-verification/issuance', (req) => middleware.handleIssuance(req)
 
 ```typescript
 import express from 'express';
-import { EmailVerificationIssuer, EVPError } from '@evp/issuer';
+import { EmailVerificationIssuer, EVPError } from '@aspect-evp/issuer';
 
 const app = express();
 
@@ -357,7 +357,7 @@ app.listen(3000);
 
 ```typescript
 import { Hono } from 'hono';
-import { EmailVerificationIssuer, createIssuerMiddleware } from '@evp/issuer';
+import { EmailVerificationIssuer, createIssuerMiddleware } from '@aspect-evp/issuer';
 
 const app = new Hono();
 
@@ -492,8 +492,8 @@ app.get('/email-verification/jwks', async (req, res) => {
 ### Unit Testing Your Implementation
 
 ```typescript
-import { EmailVerificationIssuer } from '@evp/issuer';
-import { createTestFlow } from '@evp/core/testing';
+import { EmailVerificationIssuer } from '@aspect-evp/issuer';
+import { createTestFlow } from '@aspect-evp/core/testing';
 
 describe('Email Verification Issuer', () => {
   let issuer: EmailVerificationIssuer;

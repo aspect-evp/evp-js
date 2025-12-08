@@ -1,5 +1,5 @@
 {
-  "name": "@evp/verifier",
+  "name": "@aspect-evp/verifier",
   "version": "0.1.0",
   "description": "EVP token verification for web applications (Relying Parties)",
   "type": "module",
@@ -33,18 +33,18 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/evp-js/evp.git",
+    "url": "https://github.com/aspect-evp/evp-js.git",
     "directory": "packages/verifier"
   },
   "dependencies": {
-    "@evp/core": "workspace:*",
+    "@aspect-evp/core": "workspace:*",
     "jose": "^5.9.0"
   },
   "devDependencies": {
     "typescript": "^5.3.0"
   },
   "peerDependencies": {
-    "@evp/core": "^0.1.0"
+    "@aspect-evp/core": "^0.1.0"
   },
   "publishConfig": {
     "access": "public"

@@ -1,10 +1,10 @@
-# @evp/verifier
+# @aspect-evp/verifier
 
 > EVP token verification for web applications (Relying Parties).
 
 ## Overview
 
-`@evp/verifier` enables web applications to verify EVP tokens received from browsers. It handles:
+`@aspect-evp/verifier` enables web applications to verify EVP tokens received from browsers. It handles:
 
 - Parsing SD-JWT+KB tokens
 - DNS lookup for issuer discovery
@@ -25,7 +25,7 @@ This package is for **web applications** (Relying Parties) that want to accept v
 ## Installation
 
 ```bash
-npm install @evp/verifier @evp/core
+npm install @aspect-evp/verifier @aspect-evp/core
 ```
 
 ## Dependencies
@@ -33,12 +33,12 @@ npm install @evp/verifier @evp/core
 | Package | Why |
 |---------|-----|
 | `jose` | JWT verification, JWKS fetching |
-| `@evp/core` | Shared types and utilities |
+| `@aspect-evp/core` | Shared types and utilities |
 
 ## Quick Start
 
 ```typescript
-import { EmailVerificationVerifier } from '@evp/verifier';
+import { EmailVerificationVerifier } from '@aspect-evp/verifier';
 
 // Initialize verifier with your origin
 const verifier = new EmailVerificationVerifier({
@@ -151,7 +151,7 @@ const verifier = new EmailVerificationVerifier({
 For Node.js servers, you can use native DNS:
 
 ```typescript
-import { EmailVerificationVerifier, nodeDnsResolver } from '@evp/verifier';
+import { EmailVerificationVerifier, nodeDnsResolver } from '@aspect-evp/verifier';
 
 const verifier = new EmailVerificationVerifier({
   rpOrigin: 'https://myapp.com',
@@ -194,7 +194,7 @@ const verifier = new EmailVerificationVerifier({
 ```typescript
 import express from 'express';
 import crypto from 'crypto';
-import { EmailVerificationVerifier, EVPError } from '@evp/verifier';
+import { EmailVerificationVerifier, EVPError } from '@aspect-evp/verifier';
 
 const app = express();
 app.use(express.json());
@@ -263,7 +263,7 @@ app.post('/api/email-verification/verify', async (req, res) => {
 // app/api/verify-email/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { EmailVerificationVerifier } from '@evp/verifier';
+import { EmailVerificationVerifier } from '@aspect-evp/verifier';
 
 const verifier = new EmailVerificationVerifier({
   rpOrigin: process.env.NEXT_PUBLIC_APP_URL!
@@ -308,7 +308,7 @@ export async function POST(request: NextRequest) {
 
 ```typescript
 import { Hono } from 'hono';
-import { EmailVerificationVerifier } from '@evp/verifier';
+import { EmailVerificationVerifier } from '@aspect-evp/verifier';
 
 const app = new Hono();
 
@@ -393,7 +393,7 @@ form.addEventListener('submit', async (e) => {
 ```typescript
 // This is conceptual - EVP browser APIs don't exist yet
 
-import { useEVP } from '@evp/react'; // Hypothetical future package
+import { useEVP } from '@aspect-evp/react'; // Hypothetical future package
 
 function SignupForm() {
   const { 
@@ -433,7 +433,7 @@ function SignupForm() {
 ### Detailed Error Handling
 
 ```typescript
-import { EVPError } from '@evp/core';
+import { EVPError } from '@aspect-evp/core';
 
 try {
   const result = await verifier.verify(token, nonce);
@@ -525,8 +525,8 @@ When you verify an EVP token, you're trusting:
 ### Unit Tests
 
 ```typescript
-import { EmailVerificationVerifier } from '@evp/verifier';
-import { createTestFlow } from '@evp/core/testing';
+import { EmailVerificationVerifier } from '@aspect-evp/verifier';
+import { createTestFlow } from '@aspect-evp/core/testing';
 
 describe('EmailVerificationVerifier', () => {
   let verifier: EmailVerificationVerifier;
@@ -568,7 +568,7 @@ describe('EmailVerificationVerifier', () => {
 ### Integration Tests
 
 ```typescript
-import { EmailVerificationVerifier, nodeDnsResolver } from '@evp/verifier';
+import { EmailVerificationVerifier, nodeDnsResolver } from '@aspect-evp/verifier';
 
 describe('Integration', () => {
   it('should resolve real DNS (if configured)', async () => {
