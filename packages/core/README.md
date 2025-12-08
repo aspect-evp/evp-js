@@ -1,0 +1,57 @@
+# @evp/core
+
+> Shared types, constants, and utilities for the Email Verification Protocol.
+
+[![npm version](https://img.shields.io/npm/v/@evp/core.svg)](https://www.npmjs.com/package/@evp/core)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+## Installation
+
+```bash
+npm install @evp/core
+```
+
+## Usage
+
+```typescript
+import {
+  EVPError,
+  parseSDJWTKB,
+  sha256,
+  getEmailDomain,
+  SD_JWT_TYPE,
+  KB_JWT_TYPE,
+} from '@evp/core';
+
+// Parse SD-JWT+KB token
+const { sdJwt, kbJwt, sdJwtForHash } = parseSDJWTKB(token);
+
+// Get email domain
+const domain = getEmailDomain('user@gmail.com'); // 'gmail.com'
+
+// Hash for sd_hash claim
+const hash = await sha256(sdJwt);
+```
+
+## Testing Utilities
+
+```typescript
+import { createTestFlow, MockDnsResolver } from '@evp/core/testing';
+
+// Create test fixtures
+const testFlow = await createTestFlow({
+  issuer: 'issuer.example.com',
+  rpOrigin: 'https://myapp.example.com',
+});
+
+// Create tokens for testing
+const token = await testFlow.createToken('user@example.com', 'nonce');
+```
+
+## Documentation
+
+See the [full documentation](https://github.com/aspect/evp/blob/main/docs/core.md) for complete API reference.
+
+## License
+
+MIT

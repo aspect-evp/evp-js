@@ -1,0 +1,46 @@
+/**
+ * @evp/issuer
+ *
+ * EVP issuer implementation for email providers.
+ *
+ * @packageDocumentation
+ */
+
+// Main issuer class
+export { EmailVerificationIssuer } from './issuer.js';
+
+// Key utilities
+export { generateKeyPair, getCurveForAlgorithm, isAlgorithmSupported } from './keys.js';
+
+// Middleware helpers
+export { createIssuerMiddleware, toResponse } from './middleware.js';
+export type {
+  HandleIssuanceResult,
+  IssuanceErrorResponse,
+  IssuanceSuccessResponse,
+  IssuerMiddleware,
+  VerifyUserOwnsEmail,
+} from './middleware.js';
+
+// Re-export commonly used types from @evp/core
+export type {
+  IssuerConfig,
+  IssuerMetadata,
+  JWKS,
+  KeyPair,
+  RequestTokenPayload,
+  RequestTokenVerifyResult,
+  SupportedAlgorithm,
+} from '@evp/core';
+
+// Re-export utilities and errors from @evp/core
+export {
+  DEFAULT_ALGORITHM,
+  DEFAULT_CLOCK_TOLERANCE,
+  EVPError,
+  isEVPError,
+  SD_JWT_TYPE,
+  SUPPORTED_ALGORITHMS,
+  toEVPError,
+  WELL_KNOWN_PATH,
+} from '@evp/core';

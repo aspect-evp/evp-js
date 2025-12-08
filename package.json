@@ -1,0 +1,42 @@
+{
+  "name": "evp-monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Email Verification Protocol (EVP) reference implementation",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/evp-js/evp.git"
+  },
+  "keywords": [
+    "evp",
+    "email-verification",
+    "sd-jwt",
+    "wicg",
+    "authentication"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "packageManager": "pnpm@9.0.0",
+  "scripts": {
+    "build": "pnpm -r build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "clean": "pnpm -r clean && rm -rf node_modules",
+    "typecheck": "pnpm -r typecheck",
+    "prepublishOnly": "pnpm build && pnpm test"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.0",
+    "@types/node": "^20.10.0",
+    "@vitest/coverage-v8": "^2.0.0",
+    "typescript": "^5.3.0",
+    "vitest": "^2.0.0"
+  }
+}
