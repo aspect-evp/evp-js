@@ -4,8 +4,12 @@
  * Utility functions for parsing, encoding, and validating EVP data.
  */
 
+import { webcrypto } from 'node:crypto';
 import { EVPError } from './errors.js';
 import type { ParsedSDJWTKB } from './types.js';
+
+// Use webcrypto for Node.js compatibility (globalThis.crypto not available in Node 18)
+const cryptoSubtle = webcrypto.subtle;
 
 /**
  * Parse an SD-JWT+KB token into its components
@@ -152,7 +156,7 @@ export function isValidEmail(email: string): boolean {
 export async function sha256(data: string): Promise<string> {
   const encoder = new TextEncoder();
   const dataBuffer = encoder.encode(data);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
+  const hashBuffer = await cryptoSubtle.digest('SHA-256', dataBuffer);
   return base64url(new Uint8Array(hashBuffer));
 }
 
