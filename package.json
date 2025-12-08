@@ -5,7 +5,7 @@
   "description": "Email Verification Protocol (EVP) reference implementation",
   "repository": {
     "type": "git",
-    "url": "https://github.com/evp-js/evp.git"
+    "url": "https://github.com/aspect-evp/evp-js.git"
   },
   "keywords": [
     "evp",
