@@ -1,6 +1,6 @@
 {
   "name": "@aspect-evp/verifier",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "EVP token verification for web applications (Relying Parties)",
   "type": "module",
   "main": "./dist/index.js",
