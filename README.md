@@ -4,7 +4,7 @@
 [![CI](https://github.com/aspect-evp/evp-js/actions/workflows/ci.yml/badge.svg)](https://github.com/aspect-evp/evp-js/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-> ⚠️ **Early Stage Project**: This is an implementation of the [WICG Email Verification Protocol](https://github.com/WICG/email-verification-protocol), which is currently in incubation. The protocol specification may change, and browser support is not yet available.
+> ⚠️ **Experimental**: This project tracks the [WICG Email Verification API](https://github.com/WICG/email-verification) and [IETF Email Verification Protocol draft](https://datatracker.ietf.org/doc/draft-hardt-email-verification/). Both are works in progress and may change before standardization.
 
 ## What is EVP?
 
@@ -42,7 +42,11 @@ npm install -g @aspect-evp/cli
 ### For Email Providers (Issuer)
 
 ```typescript
-import { EmailVerificationIssuer } from '@aspect-evp/issuer';
+import {
+  createIssuerMiddleware,
+  EmailVerificationIssuer,
+  toResponse,
+} from '@aspect-evp/issuer';
 
 const issuer = new EmailVerificationIssuer({
   issuer: 'mail.example.com',
@@ -50,6 +54,14 @@ const issuer = new EmailVerificationIssuer({
   kid: '2024-01-key',
   algorithm: 'EdDSA'
 });
+
+const issuance = createIssuerMiddleware(
+  issuer,
+  async (cookie, email) => {
+    const user = await getUserFromSession(cookie);
+    return user?.emails.includes(email) ?? false;
+  }
+);
 
 // Serve /.well-known/email-verification
 app.get('/.well-known/email-verification', (req, res) => {
@@ -60,6 +72,11 @@ app.get('/.well-known/email-verification', (req, res) => {
 app.get('/email-verification/jwks', (req, res) => {
   res.json(issuer.getJWKS());
 });
+
+// Fetch-style frameworks and runtimes can return this handler directly.
+async function handleIssuance(request: Request): Promise<Response> {
+  return toResponse(await issuance.handleIssuance(request));
+}
 ```
 
 ### For Web Applications (Verifier/RP)
@@ -82,7 +99,7 @@ async function handleEmailVerification(sdJwtKb: string, sessionNonce: string) {
 
 ```bash
 # Generate a keypair
-evp keygen -o keys.json
+evp keygen -j > keys.json
 
 # Run a complete test flow
 evp test -e user@example.com -i issuer.example.com
@@ -94,9 +111,9 @@ evp inspect <token>
 evp dns gmail.com
 ```
 
-## Testing Without Browser Support
+## Testing Without Native Browser Support
 
-Since browsers don't yet support EVP, use the test utilities:
+Use the test utilities to exercise the protocol without depending on a native browser implementation:
 
 ```typescript
 import { createTestFlow } from '@aspect-evp/core/testing';
@@ -128,14 +145,24 @@ sequenceDiagram
 
     Browser->>DNS: TXT _email-verification.domain.com
     DNS-->>Browser: iss=issuer.example.com
-    Browser->>Issuer: POST /issuance (+ session cookies)
-    Issuer-->>Browser: SD-JWT (signed)
+    Browser->>Issuer: POST JSON + HTTP Message Signature
+    Issuer-->>Browser: EVT (signed JWT + ~)
     Browser->>Browser: Create KB-JWT
-    Browser->>RP: emailverified event (SD-JWT+KB)
+    Browser->>RP: Submit hidden form input (EVT+KB)
     RP->>Issuer: Fetch JWKS
     RP->>RP: Verify signatures
     RP-->>Browser: Verification result
 ```
+
+## Documentation
+
+The [documentation hub](./docs/README.md) provides a guided path through setup, protocol flow, architecture, configuration, package APIs, testing, and development.
+
+- [Getting started](./docs/GETTING-STARTED.md)
+- [Protocol flow](./docs/PROTOCOL-FLOW.md)
+- [Issuer guide](./docs/issuer.md)
+- [Verifier guide](./docs/verifier.md)
+- [Testing and 100% coverage policy](./docs/TESTING.md)
 
 ## Development
 
@@ -157,24 +184,31 @@ pnpm test:coverage
 | `pnpm test` | Run tests |
 | `pnpm test:coverage` | Run tests with coverage |
 | `pnpm lint` | Lint code |
+| `pnpm format` | Format code |
 | `pnpm typecheck` | Type check |
 | `pnpm changeset` | Create a changeset for release |
 
-## Current Status
+## Draft conformance
 
-| Component | Status |
-|-----------|--------|
-| WICG Specification | 📝 Draft |
-| Chrome Implementation | 🧪 Intent to Prototype |
-| `@aspect-evp/*` | ✅ Published |
+| Area | Status |
+|------|--------|
+| DNS issuer discovery and metadata | Implemented |
+| JSON issuance request | Implemented |
+| RFC 9421 HTTP Message Signature profile | Implemented |
+| EVT (`typ: evt+jwt`) and EVT+KB verification | Implemented |
+| Private/directed email extension points | Implemented via issuer callbacks |
+| WebAuthn fallback | Challenge and verification callbacks; credential policy remains application-owned |
+| WICG legacy `request_token` helper | Deprecated compatibility API |
 
 ## Requirements
 
 - Node.js >= 20.0.0
+- pnpm 9.x for workspace development
 
 ## Related Resources
 
-- [WICG Email Verification Protocol Spec](https://github.com/WICG/email-verification-protocol)
+- [WICG Email Verification API](https://github.com/WICG/email-verification)
+- [IETF Email Verification Protocol draft](https://datatracker.ietf.org/doc/draft-hardt-email-verification/)
 - [Chrome Intent to Prototype](https://groups.google.com/a/chromium.org/g/blink-dev/c/pWfWupaOtJw)
 - [SD-JWT Specification (IETF RFC 9901)](https://www.rfc-editor.org/rfc/rfc9901.html)
 

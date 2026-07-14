@@ -85,7 +85,7 @@ evp inspect ./token.txt -j
 
 ### `evp issue` - Issue Tokens
 
-Issue an SD-JWT token for testing:
+Issue an EVT for testing:
 
 ```bash
 # Issue token
@@ -97,7 +97,7 @@ evp issue -e user@example.com -i mail.example.com -k ./key.json -j
 
 ### `evp verify` - Verify Tokens
 
-Verify an SD-JWT+KB token:
+Verify an EVT+KB token:
 
 ```bash
 # Verify with local JWKS
@@ -119,9 +119,9 @@ evp test -v
 # ✓ Generate test keys
 # ✓ Configure mock DNS
 # ✓ Generate session nonce
-# ✓ Issue SD-JWT token
+# ✓ Issue EVT
 # ✓ Create Key Binding JWT
-# ✓ Verify SD-JWT+KB token
+# ✓ Verify EVT+KB token
 #
 # Verification Result:
 #   Email: user@example.com

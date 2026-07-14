@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { EVPError, isEVPError, toEVPError } from '../src/errors.js';
+import { EVPError, getErrorMessage, isEVPError, toEVPError } from '../src/errors.js';
 
 describe('EVPError', () => {
   describe('constructor', () => {
@@ -24,11 +24,30 @@ describe('EVPError', () => {
       expect(error).toBeInstanceOf(EVPError);
     });
 
+    it('should work when V8 stack capture is unavailable', () => {
+      const original = Error.captureStackTrace;
+      Object.defineProperty(Error, 'captureStackTrace', {
+        configurable: true,
+        value: undefined,
+      });
+      try {
+        expect(new EVPError('invalid_request')).toBeInstanceOf(Error);
+      } finally {
+        Object.defineProperty(Error, 'captureStackTrace', {
+          configurable: true,
+          value: original,
+        });
+      }
+    });
+
     it('should support all error codes', () => {
       const codes = [
         'invalid_request',
         'invalid_token',
+        'invalid_signature',
         'authentication_required',
+        'private_email_not_supported',
+        'invalid_directed_email',
         'server_error',
       ] as const;
       for (const code of codes) {
@@ -80,10 +99,30 @@ describe('EVPError', () => {
       expect(error.getHttpStatus()).toBe(400);
     });
 
+    it.each([
+      'invalid_signature',
+      'private_email_not_supported',
+      'invalid_directed_email',
+    ] as const)('should return 400 for %s', (code) => {
+      expect(new EVPError(code).getHttpStatus()).toBe(400);
+    });
+
     it('should return 500 for server_error', () => {
       const error = new EVPError('server_error');
       expect(error.getHttpStatus()).toBe(500);
     });
+
+    it('should fail closed for an unknown runtime error code', () => {
+      const error = new EVPError('future_error' as never);
+      expect(error.getHttpStatus()).toBe(400);
+    });
+  });
+});
+
+describe('getErrorMessage', () => {
+  it('normalizes Error and non-Error values', () => {
+    expect(getErrorMessage(new Error('failure'))).toBe('failure');
+    expect(getErrorMessage('failure')).toBe('failure');
   });
 });
 

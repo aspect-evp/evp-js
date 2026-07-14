@@ -1,5 +1,11 @@
 import * as fs from 'node:fs';
-import { EVPError, type VerificationResult } from '@aspect-evp/core';
+import {
+  decodeJWTPayload,
+  EVPError,
+  type IssuanceTokenPayload,
+  parseSDJWTKB,
+  type VerificationResult,
+} from '@aspect-evp/core';
 import { EmailVerificationVerifier } from '@aspect-evp/verifier';
 import { defineCommand } from 'citty';
 import consola from 'consola';
@@ -14,12 +20,45 @@ function readToken(tokenOrPath: string): string {
 }
 
 /** Create verifier for offline mode with local JWKS */
-function createOfflineVerifier(jwksPath: string, origin: string, issuerUrl?: string) {
+function issuerIdentifier(value: string): string {
+  try {
+    return new URL(value.includes('://') ? value : `https://${value}`).hostname;
+  } catch {
+    throw new EVPError('invalid_request', `Invalid issuer URL: ${value}`);
+  }
+}
+
+function issuerFromToken(token: string): string {
+  const { sdJwt } = parseSDJWTKB(token);
+  const payload = sdJwt.slice(0, -1).split('.')[1];
+  if (!payload) throw new EVPError('invalid_token', 'EVT payload is missing');
+  const { iss } = decodeJWTPayload<IssuanceTokenPayload>(payload);
+  if (typeof iss !== 'string') throw new EVPError('invalid_token', 'EVT issuer is missing');
+  return iss;
+}
+
+function createOfflineVerifier(
+  jwksPath: string,
+  origin: string,
+  token: string,
+  issuerUrl?: string
+) {
   const jwksContent = fs.readFileSync(jwksPath, 'utf-8');
   const jwks = JSON.parse(jwksContent);
+  const issuer = issuerUrl ? issuerIdentifier(issuerUrl) : issuerFromToken(token);
+  const jwksUri = `https://${issuer}/email-verification/jwks`;
 
   const mockFetch = async (url: string) => {
-    if (url.includes('jwks') || url.includes('.well-known')) {
+    if (url.includes('.well-known')) {
+      return new Response(
+        JSON.stringify({
+          issuance_endpoint: `https://${issuer}/email-verification/issuance`,
+          jwks_uri: jwksUri,
+        }),
+        { headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+    if (url === jwksUri) {
       return new Response(JSON.stringify(jwks), {
         headers: { 'Content-Type': 'application/json' },
       });
@@ -27,7 +66,7 @@ function createOfflineVerifier(jwksPath: string, origin: string, issuerUrl?: str
     throw new Error(`Unexpected fetch: ${url}`);
   };
 
-  const mockDns = async () => issuerUrl || 'mock-issuer';
+  const mockDns = async () => issuer;
 
   return new EmailVerificationVerifier({
     rpOrigin: origin,
@@ -37,8 +76,11 @@ function createOfflineVerifier(jwksPath: string, origin: string, issuerUrl?: str
 }
 
 /** Create verifier for online mode */
-function createOnlineVerifier(origin: string) {
-  return new EmailVerificationVerifier({ rpOrigin: origin });
+function createOnlineVerifier(origin: string, issuerUrl?: string) {
+  return new EmailVerificationVerifier({
+    rpOrigin: origin,
+    ...(issuerUrl ? { dnsResolver: async () => issuerIdentifier(issuerUrl) } : {}),
+  });
 }
 
 /** Output successful verification result */
@@ -103,13 +145,13 @@ function outputError(error: unknown, asJson: boolean): never {
 export const verifyCommand = defineCommand({
   meta: {
     name: 'verify',
-    description: 'Verify an EVP SD-JWT+KB token',
+    description: 'Verify an EVP EVT+KB token',
   },
   args: {
     token: {
       type: 'string',
       alias: 't',
-      description: 'SD-JWT+KB token to verify (or path to file)',
+      description: 'EVT+KB token to verify (or path to file)',
       required: true,
     },
     nonce: {
@@ -148,12 +190,9 @@ export const verifyCommand = defineCommand({
       let verifier: EmailVerificationVerifier;
 
       if (args.jwks) {
-        verifier = createOfflineVerifier(args.jwks, args.origin, args.issuerUrl);
-      } else if (args.issuerUrl) {
-        verifier = createOnlineVerifier(args.origin);
+        verifier = createOfflineVerifier(args.jwks, args.origin, token, args.issuerUrl);
       } else {
-        consola.error('Either --issuerUrl or --jwks is required');
-        process.exit(1);
+        verifier = createOnlineVerifier(args.origin, args.issuerUrl);
       }
 
       const result = await verifier.verify(token, args.nonce);

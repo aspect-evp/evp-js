@@ -18,15 +18,97 @@ import {
   decodeJWTPayload,
   EVPError,
   getEmailDomain,
+  getErrorMessage,
   isTimestampValid,
+  isValidEmail,
   KB_JWT_TYPE,
   parseSDJWTKB,
   SD_JWT_TYPE,
+  SUPPORTED_ALGORITHMS,
   sha256,
 } from '@aspect-evp/core';
-import { type JWK, jwtVerify } from 'jose';
+import { importJWK, type JWK, jwtVerify } from 'jose';
 import { defaultDnsResolver, resolveIssuer } from './dns.js';
 import { createJWKSFetcher, fetchIssuerMetadata } from './jwks.js';
+
+function isValidIssuerIdentifier(value: string): boolean {
+  if (!value || value.includes('/') || value.includes('@')) return false;
+  try {
+    const url = new URL(`https://${value}`);
+    return url.hostname === value && url.port === '' && url.username === '' && url.password === '';
+  } catch {
+    return false;
+  }
+}
+
+function isSupportedAlgorithm(value: unknown): value is (typeof SUPPORTED_ALGORITHMS)[number] {
+  return (
+    typeof value === 'string' &&
+    SUPPORTED_ALGORITHMS.includes(value as (typeof SUPPORTED_ALGORITHMS)[number])
+  );
+}
+
+function validateEvtHeader(header: IssuanceTokenHeader): void {
+  if (header.typ !== SD_JWT_TYPE) {
+    throw new EVPError(
+      'invalid_token',
+      `Invalid EVT type: expected ${SD_JWT_TYPE}, got ${header.typ}`
+    );
+  }
+  if (!header.kid || typeof header.kid !== 'string' || !isSupportedAlgorithm(header.alg)) {
+    throw new EVPError('invalid_token', 'EVT header must contain a supported alg and a kid');
+  }
+}
+
+function validateEvtPayloadShape(payload: IssuanceTokenPayload): void {
+  if (typeof payload.iss !== 'string' || !isValidIssuerIdentifier(payload.iss)) {
+    throw new EVPError('invalid_token', 'EVT contains an invalid issuer identifier');
+  }
+  if (typeof payload.email !== 'string' || !isValidEmail(payload.email)) {
+    throw new EVPError('invalid_token', 'EVT contains an invalid email claim');
+  }
+  if (!Number.isInteger(payload.iat)) {
+    throw new EVPError('invalid_token', 'EVT iat must be an integer timestamp');
+  }
+}
+
+function validateEvtClaims(payload: IssuanceTokenPayload, clockTolerance: number): void {
+  if (payload.email_verified !== true) {
+    throw new EVPError('invalid_token', 'email_verified claim must be true');
+  }
+  if (!isTimestampValid(payload.iat, clockTolerance)) {
+    throw new EVPError('invalid_token', 'EVT timestamp is outside acceptable range');
+  }
+  if (!payload.cnf?.jwk) {
+    throw new EVPError('invalid_token', 'EVT must include cnf.jwk claim');
+  }
+  if (payload.is_private_email !== undefined && payload.is_private_email !== true) {
+    throw new EVPError('invalid_token', 'is_private_email must be true when present');
+  }
+}
+
+function validateKeyBindingShape(
+  header: { typ: string; alg: string },
+  payload: KeyBindingPayload
+): void {
+  if (header.typ !== KB_JWT_TYPE) {
+    throw new EVPError(
+      'invalid_token',
+      `Invalid KB-JWT type: expected ${KB_JWT_TYPE}, got ${header.typ}`
+    );
+  }
+  if (!isSupportedAlgorithm(header.alg)) {
+    throw new EVPError('invalid_token', 'KB-JWT uses an unsupported algorithm');
+  }
+  if (
+    typeof payload.aud !== 'string' ||
+    typeof payload.nonce !== 'string' ||
+    !Number.isInteger(payload.iat) ||
+    typeof payload.sd_hash !== 'string'
+  ) {
+    throw new EVPError('invalid_token', 'KB-JWT contains invalid required claims');
+  }
+}
 
 /**
  * Email Verification Verifier
@@ -65,10 +147,10 @@ export class EmailVerificationVerifier {
     // Validate origin format
     try {
       const url = new URL(config.rpOrigin);
-      if (url.origin !== config.rpOrigin) {
+      if (url.protocol !== 'https:' || url.origin !== config.rpOrigin) {
         throw new EVPError(
           'invalid_request',
-          `Invalid RP origin: must be exact origin without path (got ${config.rpOrigin})`
+          `Invalid RP origin: must be an exact HTTPS origin without path (got ${config.rpOrigin})`
         );
       }
     } catch (e) {
@@ -113,14 +195,15 @@ export class EmailVerificationVerifier {
     }
 
     // 1. Parse the token into SD-JWT and KB-JWT parts
-    const { kbJwt, sdJwtForHash } = parseSDJWTKB(sdJwtKb);
+    const { sdJwt, kbJwt, sdJwtForHash } = parseSDJWTKB(sdJwtKb);
 
     if (!kbJwt) {
       throw new EVPError('invalid_token', 'Token must include Key Binding JWT');
     }
 
     // 2. Decode SD-JWT header and payload (without verification yet)
-    const sdJwtParts = sdJwtForHash.split('.');
+    const issuerJwt = sdJwt.slice(0, -1);
+    const sdJwtParts = issuerJwt.split('.');
     const headerPart = sdJwtParts[0];
     const payloadPart = sdJwtParts[1];
 
@@ -131,13 +214,8 @@ export class EmailVerificationVerifier {
     const sdJwtHeader = decodeJWTHeader<IssuanceTokenHeader>(headerPart);
     const sdJwtPayload = decodeJWTPayload<IssuanceTokenPayload>(payloadPart);
 
-    // 3. Validate SD-JWT header
-    if (sdJwtHeader.typ !== SD_JWT_TYPE) {
-      throw new EVPError(
-        'invalid_token',
-        `Invalid SD-JWT type: expected ${SD_JWT_TYPE}, got ${sdJwtHeader.typ}`
-      );
-    }
+    validateEvtHeader(sdJwtHeader);
+    validateEvtPayloadShape(sdJwtPayload);
 
     // 4. Get email domain and resolve issuer via DNS
     const emailDomain = getEmailDomain(sdJwtPayload.email);
@@ -161,42 +239,31 @@ export class EmailVerificationVerifier {
 
     // 7. Verify SD-JWT signature
     try {
-      await jwtVerify(sdJwtForHash, getKey, {
-        algorithms: metadata.signing_alg_values_supported ?? [sdJwtHeader.alg],
+      await jwtVerify(issuerJwt, getKey, {
+        algorithms: metadata.signing_alg_values_supported ?? ['EdDSA'],
       });
     } catch (error) {
       throw new EVPError(
         'invalid_token',
-        `SD-JWT signature verification failed: ${error instanceof Error ? error.message : String(error)}`
+        `SD-JWT signature verification failed: ${getErrorMessage(error)}`
       );
     }
 
-    // 8. Verify SD-JWT claims
-    if (!sdJwtPayload.email_verified) {
-      throw new EVPError('invalid_token', 'email_verified claim must be true');
-    }
-
-    if (!isTimestampValid(sdJwtPayload.iat, this.config.clockTolerance)) {
-      throw new EVPError('invalid_token', 'SD-JWT timestamp is outside acceptable range');
-    }
-
-    // 9. Get browser's public key from cnf claim
-    if (!sdJwtPayload.cnf?.jwk) {
-      throw new EVPError('invalid_token', 'SD-JWT must include cnf.jwk claim');
-    }
-
+    validateEvtClaims(sdJwtPayload, this.config.clockTolerance);
     const browserPublicKey = sdJwtPayload.cnf.jwk;
 
     // 10. Verify KB-JWT
     await this.verifyKeyBinding(kbJwt, browserPublicKey, sdJwtForHash, expectedNonce);
 
     // 11. Return verification result
-    return {
+    const result: VerificationResult = {
       email: sdJwtPayload.email,
       email_verified: true,
       issuer: sdJwtPayload.iss,
       issuedAt: new Date(sdJwtPayload.iat * 1000),
     };
+    if (sdJwtPayload.is_private_email) result.isPrivateEmail = true;
+    return result;
   }
 
   /**
@@ -220,17 +287,13 @@ export class EmailVerificationVerifier {
     const kbHeader = decodeJWTHeader<{ typ: string; alg: string }>(kbHeaderPart);
     const kbPayload = decodeJWTPayload<KeyBindingPayload>(kbPayloadPart);
 
-    // Validate KB-JWT header type
-    if (kbHeader.typ !== KB_JWT_TYPE) {
-      throw new EVPError(
-        'invalid_token',
-        `Invalid KB-JWT type: expected ${KB_JWT_TYPE}, got ${kbHeader.typ}`
-      );
+    validateKeyBindingShape(kbHeader, kbPayload);
+    let publicKey: Awaited<ReturnType<typeof importJWK>>;
+    try {
+      publicKey = await importJWK(browserPublicKey as JWK, kbHeader.alg);
+    } catch (error) {
+      throw new EVPError('invalid_token', `Invalid cnf.jwk: ${getErrorMessage(error)}`);
     }
-
-    // Import browser's public key for verification
-    const { importJWK } = await import('jose');
-    const publicKey = await importJWK(browserPublicKey as JWK, kbHeader.alg);
 
     // Verify KB-JWT signature
     try {
@@ -240,7 +303,7 @@ export class EmailVerificationVerifier {
     } catch (error) {
       throw new EVPError(
         'invalid_token',
-        `KB-JWT signature verification failed: ${error instanceof Error ? error.message : String(error)}`
+        `KB-JWT signature verification failed: ${getErrorMessage(error)}`
       );
     }
 

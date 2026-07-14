@@ -32,7 +32,7 @@ describe('parseSDJWTKB', () => {
 
     expect(result.sdJwt).toBe(`${mockSdJwt}~`);
     expect(result.kbJwt).toBe(mockKbJwt);
-    expect(result.sdJwtForHash).toBe(mockSdJwt);
+    expect(result.sdJwtForHash).toBe(`${mockSdJwt}~`);
   });
 
   it('should parse SD-JWT without KB-JWT', () => {
@@ -41,7 +41,7 @@ describe('parseSDJWTKB', () => {
 
     expect(result.sdJwt).toBe(`${mockSdJwt}~`);
     expect(result.kbJwt).toBeNull();
-    expect(result.sdJwtForHash).toBe(mockSdJwt);
+    expect(result.sdJwtForHash).toBe(`${mockSdJwt}~`);
   });
 
   it('should throw for empty string', () => {
@@ -102,6 +102,10 @@ describe('getEmailDomain', () => {
 
   it('should throw for email ending with @', () => {
     expect(() => getEmailDomain('user@')).toThrow(EVPError);
+  });
+
+  it('should reject whitespace in the domain', () => {
+    expect(() => getEmailDomain('user@example .com')).toThrow('Invalid email domain');
   });
 
   it('should throw for null input', () => {

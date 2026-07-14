@@ -69,14 +69,14 @@ export const issueCommand = defineCommand({
     const browserKeyPair = await EmailVerificationIssuer.generateKeyPair('ES256');
 
     // Issue token
-    const sdJwt = await issuer.issueToken(args.email, browserKeyPair.publicKey);
+    const evt = await issuer.issueToken(args.email, browserKeyPair.publicKey);
 
     if (args.json) {
       console.log(
         formatJson({
           email: args.email,
           issuer: args.issuer,
-          sdJwt,
+          evt,
           browserPublicKey: browserKeyPair.publicKey,
           browserPrivateKey: browserKeyPair.privateKey,
         })
@@ -97,11 +97,11 @@ export const issueCommand = defineCommand({
     );
 
     console.log();
-    console.log(formatHeader('SD-JWT Token'));
-    console.log(truncate(sdJwt, 100));
+    console.log(formatHeader('EVT'));
+    console.log(truncate(evt, 100));
     console.log();
     console.log(formatHeader('Full Token'));
-    console.log(sdJwt);
+    console.log(evt);
 
     console.log();
     console.log(formatHeader('Browser Key Pair (for creating KB-JWT)'));

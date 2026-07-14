@@ -80,7 +80,7 @@ export const dnsCommand = defineCommand({
         console.log(`  ${symbols.bullet} This domain supports EVP email verification`);
         console.log(`  ${symbols.bullet} Tokens should be issued by: ${pc.cyan(issuer)}`);
         console.log(
-          `  ${symbols.bullet} JWKS endpoint: ${pc.cyan(`https://${issuer}/.well-known/email-verification`)}`
+          `  ${symbols.bullet} Metadata endpoint: ${pc.cyan(`https://${issuer}/.well-known/email-verification`)}`
         );
       } else {
         console.log(formatError(`No EVP record found for ${domain}`));
@@ -99,7 +99,7 @@ export const dnsCommand = defineCommand({
         console.log(`  ${symbols.bullet} The email provider may not support EVP yet`);
         console.log();
         console.log(pc.dim('Expected DNS record format:'));
-        console.log(pc.dim(`  TXT ${recordName} "v=evp1; iss=issuer.example.com"`));
+        console.log(pc.dim(`  TXT ${recordName} "iss=issuer.example.com"`));
       }
     } catch (error) {
       if (args.json) {

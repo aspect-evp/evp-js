@@ -102,10 +102,10 @@ function outputJson(
   );
 }
 
-/** Print SD-JWT section */
+/** Print EVT section */
 function printSDJwtSection(decoded: DecodedJWT) {
   console.log();
-  console.log(formatHeader('SD-JWT (Issuer Token)'));
+  console.log(formatHeader('EVT (Issuer Token)'));
   console.log(formatDim('─'.repeat(50)));
 
   console.log();
@@ -140,7 +140,7 @@ function printSDJwtSection(decoded: DecodedJWT) {
 function printKBJwtSection(decoded: DecodedJWT | null) {
   if (!decoded) {
     console.log();
-    console.log(formatWarning('No KB-JWT found (token is SD-JWT only, not SD-JWT+KB)'));
+    console.log(formatWarning('No KB-JWT found (token is EVT only, not EVT+KB)'));
     return;
   }
 
@@ -203,7 +203,7 @@ export const inspectCommand = defineCommand({
   args: {
     token: {
       type: 'positional',
-      description: 'SD-JWT+KB token to inspect (or path to file)',
+      description: 'EVT+KB token to inspect (or path to file)',
       required: true,
     },
     json: {

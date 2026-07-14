@@ -3,7 +3,7 @@
  *
  * Testing utilities for EVP implementations.
  *
- * @see https://github.com/WICG/email-verification-protocol
+ * @see https://datatracker.ietf.org/doc/draft-hardt-email-verification/
  * @packageDocumentation
  */
 

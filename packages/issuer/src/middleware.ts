@@ -1,199 +1,215 @@
-/**
- * EVP Issuer Middleware Helpers
- *
- * Provides framework-agnostic middleware for handling EVP issuance requests.
- */
+/** Framework-agnostic handlers for the EVP issuance endpoint. */
 
-import { isEVPError } from '@aspect-evp/core';
+import {
+  EVPError,
+  type IssuanceRequest,
+  isEVPError,
+  isValidEmail,
+  verifyHttpMessageSignature,
+  type WebAuthnChallenge,
+  type WebAuthnResponse,
+} from '@aspect-evp/core';
 import type { EmailVerificationIssuer } from './issuer.js';
 
-/**
- * Function to verify if a user owns an email address
- */
 export type VerifyUserOwnsEmail = (cookie: string, email: string) => Promise<boolean>;
+export type CreatePrivateEmail = (email: string) => Promise<string>;
+export type VerifyDirectedEmail = (email: string, directedEmail: string) => Promise<boolean>;
+export type CreateWebAuthnChallenge = (email: string) => Promise<WebAuthnChallenge>;
+export type VerifyWebAuthnResponse = (
+  email: string,
+  response: WebAuthnResponse,
+  cookie: string
+) => Promise<boolean>;
 
-/**
- * Issuance response for successful token generation
- */
+export interface IssuerMiddlewareOptions {
+  createPrivateEmail?: CreatePrivateEmail;
+  verifyDirectedEmail?: VerifyDirectedEmail;
+  createWebAuthnChallenge?: CreateWebAuthnChallenge;
+  verifyWebAuthnResponse?: VerifyWebAuthnResponse;
+  clockTolerance?: number;
+}
+
 export interface IssuanceSuccessResponse {
   issuance_token: string;
 }
 
-/**
- * Error response for failed issuance
- */
 export interface IssuanceErrorResponse {
   error: string;
   error_description?: string;
 }
 
-/**
- * Result from handling an issuance request
- */
+export interface WebAuthnChallengeResponse {
+  webauthn_challenge: WebAuthnChallenge;
+}
+
 export interface HandleIssuanceResult {
   status: number;
-  body: IssuanceSuccessResponse | IssuanceErrorResponse;
+  body: IssuanceSuccessResponse | IssuanceErrorResponse | WebAuthnChallengeResponse;
   headers?: Record<string, string>;
 }
 
-/**
- * Issuer middleware interface
- */
 export interface IssuerMiddleware {
   handleIssuance(request: Request): Promise<HandleIssuanceResult>;
 }
 
-/** Create error result */
 function errorResult(
   status: number,
   error: string,
-  description?: string,
+  description: string,
   headers?: Record<string, string>
 ): HandleIssuanceResult {
-  const body: IssuanceErrorResponse = { error };
-  if (description) {
-    body.error_description = description;
-  }
+  const body: IssuanceErrorResponse = { error, error_description: description };
   const result: HandleIssuanceResult = { status, body };
-  if (headers) {
-    result.headers = headers;
-  }
+  if (headers) result.headers = headers;
   return result;
 }
 
-/** Create success result */
-function successResult(issuanceToken: string): HandleIssuanceResult {
-  return {
-    status: 200,
-    body: { issuance_token: issuanceToken },
-  };
-}
-
-/** Validate HTTP method */
-function validateMethod(request: Request): HandleIssuanceResult | null {
+function validateEnvelope(request: Request): HandleIssuanceResult | null {
   if (request.method !== 'POST') {
     return errorResult(405, 'invalid_request', 'Method must be POST', { Allow: 'POST' });
   }
-  return null;
-}
-
-/** Validate Content-Type header */
-function validateContentType(request: Request): HandleIssuanceResult | null {
-  const contentType = request.headers.get('Content-Type');
-  if (!contentType?.includes('application/x-www-form-urlencoded')) {
-    return errorResult(
-      415,
-      'invalid_request',
-      'Content-Type must be application/x-www-form-urlencoded'
-    );
+  const contentType = request.headers.get('Content-Type')?.split(';', 1)[0]?.trim().toLowerCase();
+  if (contentType !== 'application/json') {
+    return errorResult(415, 'invalid_request', 'Content-Type must be application/json');
   }
-  return null;
-}
-
-/** Validate Sec-Fetch-Dest header */
-function validateSecFetchDest(request: Request): HandleIssuanceResult | null {
-  const secFetchDest = request.headers.get('Sec-Fetch-Dest');
-  if (secFetchDest !== 'email-verification') {
+  if (request.headers.get('Sec-Fetch-Dest') !== 'email-verification') {
     return errorResult(400, 'invalid_request', 'Missing or invalid Sec-Fetch-Dest header');
   }
   return null;
 }
 
-/** Validate all request headers and method */
-function validateRequest(request: Request): HandleIssuanceResult | null {
-  return validateMethod(request) || validateContentType(request) || validateSecFetchDest(request);
-}
-
-/** Extract request token from form data */
-async function extractRequestToken(request: Request): Promise<string | HandleIssuanceResult> {
-  const formData = await request.formData();
-  const requestToken = formData.get('request_token');
-
-  if (!requestToken || typeof requestToken !== 'string') {
-    return errorResult(400, 'invalid_request', 'Missing request_token parameter');
+async function parseBody(request: Request): Promise<IssuanceRequest> {
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    throw new EVPError('invalid_request', 'Invalid or malformed request body');
   }
-
-  return requestToken;
-}
-
-/** Verify user owns the email address */
-async function verifyEmailOwnership(
-  request: Request,
-  email: string,
-  verifyUserOwnsEmail: VerifyUserOwnsEmail
-): Promise<HandleIssuanceResult | null> {
-  const cookie = request.headers.get('Cookie') ?? '';
-  const ownsEmail = await verifyUserOwnsEmail(cookie, email);
-
-  if (!ownsEmail) {
-    return errorResult(
-      401,
-      'authentication_required',
-      'User must be authenticated and control the email'
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    throw new EVPError('invalid_request', 'Invalid or malformed request body');
+  }
+  const candidate = body as Record<string, unknown> & {
+    email?: unknown;
+    private_email?: unknown;
+    directed_email?: unknown;
+  };
+  if (typeof candidate.email !== 'string' || !isValidEmail(candidate.email)) {
+    throw new EVPError('invalid_request', 'A syntactically valid email is required');
+  }
+  if (candidate.private_email !== undefined && typeof candidate.private_email !== 'boolean') {
+    throw new EVPError('invalid_request', 'private_email must be a boolean');
+  }
+  if (candidate.directed_email !== undefined && typeof candidate.directed_email !== 'string') {
+    throw new EVPError('invalid_request', 'directed_email must be a string');
+  }
+  if (candidate.private_email && candidate.directed_email !== undefined) {
+    throw new EVPError(
+      'invalid_request',
+      'private_email and directed_email are mutually exclusive'
     );
   }
-
-  return null;
+  return candidate as unknown as IssuanceRequest;
 }
 
-/** Handle error and convert to result */
-function handleError(error: unknown): HandleIssuanceResult {
-  if (isEVPError(error)) {
+async function authenticate(
+  request: Request,
+  body: IssuanceRequest,
+  verifyUserOwnsEmail: VerifyUserOwnsEmail,
+  options: IssuerMiddlewareOptions
+): Promise<HandleIssuanceResult | null> {
+  const cookie = request.headers.get('Cookie') ?? '';
+  if (await verifyUserOwnsEmail(cookie, body.email)) return null;
+
+  if (body.webauthn_response && options.verifyWebAuthnResponse) {
+    if (await options.verifyWebAuthnResponse(body.email, body.webauthn_response, cookie))
+      return null;
+  } else if (!body.webauthn_response && options.createWebAuthnChallenge) {
     return {
-      status: error.getHttpStatus(),
-      body: error.toJSON(),
+      status: 401,
+      body: { webauthn_challenge: await options.createWebAuthnChallenge(body.email) },
     };
   }
 
-  console.error('EVP issuance error:', error);
-  return errorResult(500, 'server_error', 'Internal server error');
+  return errorResult(
+    401,
+    'authentication_required',
+    'User must be authenticated and have control of the requested email address'
+  );
 }
 
-/**
- * Create middleware for handling EVP issuance requests
- *
- * @param issuer - The EmailVerificationIssuer instance
- * @param verifyUserOwnsEmail - Function to verify user owns the email
- * @returns Middleware with handleIssuance method
- *
- * @example
- * ```typescript
- * const middleware = createIssuerMiddleware(issuer, async (cookie, email) => {
- *   const user = await getUserFromSession(cookie);
- *   return user?.emails.includes(email) ?? false;
- * });
- * ```
- */
+async function selectIssuedEmail(
+  body: IssuanceRequest,
+  options: IssuerMiddlewareOptions
+): Promise<{ email: string; isPrivateEmail: boolean }> {
+  if (body.private_email) {
+    if (!options.createPrivateEmail) {
+      throw new EVPError(
+        'private_email_not_supported',
+        'This issuer does not support private email addresses'
+      );
+    }
+    const email = await options.createPrivateEmail(body.email);
+    if (!isValidEmail(email)) {
+      throw new EVPError('server_error', 'Private email callback returned an invalid email');
+    }
+    return { email, isPrivateEmail: true };
+  }
+
+  if (body.directed_email !== undefined) {
+    if (!options.verifyDirectedEmail) {
+      throw new EVPError(
+        'private_email_not_supported',
+        'This issuer does not support private email addresses'
+      );
+    }
+    if (
+      !isValidEmail(body.directed_email) ||
+      !(await options.verifyDirectedEmail(body.email, body.directed_email))
+    ) {
+      throw new EVPError(
+        'invalid_directed_email',
+        'The directed_email is invalid or not linked to this email address'
+      );
+    }
+    return { email: body.directed_email, isPrivateEmail: true };
+  }
+
+  return { email: body.email, isPrivateEmail: false };
+}
+
+function handleError(error: unknown): HandleIssuanceResult {
+  if (isEVPError(error)) return { status: error.getHttpStatus(), body: error.toJSON() };
+  console.error('EVP issuance error:', error);
+  return errorResult(500, 'server_error', 'Temporary server error, please try again later');
+}
+
+/** Create the current-draft EVP issuance middleware. */
 export function createIssuerMiddleware(
   issuer: EmailVerificationIssuer,
-  verifyUserOwnsEmail: VerifyUserOwnsEmail
+  verifyUserOwnsEmail: VerifyUserOwnsEmail,
+  options: IssuerMiddlewareOptions = {}
 ): IssuerMiddleware {
   return {
     async handleIssuance(request: Request): Promise<HandleIssuanceResult> {
       try {
-        // Validate request headers and method
-        const validationError = validateRequest(request);
-        if (validationError) return validationError;
+        const envelopeError = validateEnvelope(request);
+        if (envelopeError) return envelopeError;
 
-        // Extract request token
-        const tokenResult = await extractRequestToken(request);
-        if (typeof tokenResult !== 'string') return tokenResult;
-        const requestToken = tokenResult;
-
-        // Verify the request token
-        const { payload, browserPublicKey } = await issuer.verifyRequestToken(requestToken);
-
-        // Check if user owns this email
-        const ownershipError = await verifyEmailOwnership(
+        const { publicKey } = await verifyHttpMessageSignature(request, options.clockTolerance);
+        const body = await parseBody(request);
+        const authenticationResult = await authenticate(
           request,
-          payload.email,
-          verifyUserOwnsEmail
+          body,
+          verifyUserOwnsEmail,
+          options
         );
-        if (ownershipError) return ownershipError;
+        if (authenticationResult) return authenticationResult;
 
-        // Issue the token
-        const issuanceToken = await issuer.issueToken(payload.email, browserPublicKey);
-        return successResult(issuanceToken);
+        const issued = await selectIssuedEmail(body, options);
+        const issuanceToken = await issuer.issueToken(issued.email, publicKey, {
+          isPrivateEmail: issued.isPrivateEmail,
+        });
+        return { status: 200, body: { issuance_token: issuanceToken } };
       } catch (error) {
         return handleError(error);
       }
@@ -201,17 +217,7 @@ export function createIssuerMiddleware(
   };
 }
 
-/**
- * Convert HandleIssuanceResult to a Web API Response
- */
 export function toResponse(result: HandleIssuanceResult): Response {
-  const headers = new Headers({
-    'Content-Type': 'application/json',
-    ...result.headers,
-  });
-
-  return new Response(JSON.stringify(result.body), {
-    status: result.status,
-    headers,
-  });
+  const headers = new Headers({ 'Content-Type': 'application/json', ...result.headers });
+  return new Response(JSON.stringify(result.body), { status: result.status, headers });
 }

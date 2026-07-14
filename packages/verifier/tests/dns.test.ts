@@ -116,6 +116,39 @@ describe('defaultDnsResolver', () => {
     const result = await defaultDnsResolver('example.com');
     expect(result).toBe('issuer.example.com');
   });
+
+  it('should reject multiple EVP issuer records', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        Answer: [
+          { type: 16, data: '"iss=issuer-one.example.com"' },
+          { type: 16, data: '"iss=issuer-two.example.com"' },
+        ],
+      }),
+    });
+    await expect(defaultDnsResolver('example.com')).resolves.toBeNull();
+  });
+
+  it('should reject issuer values that are not hostnames', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ Answer: [{ type: 16, data: '"iss=evil.example/path"' }] }),
+    });
+    await expect(defaultDnsResolver('example.com')).resolves.toBeNull();
+  });
+
+  it.each([
+    '%',
+    'issuer.example.com:443',
+    'user@issuer.example.com',
+  ])('should reject malformed issuer hostname %s', async (issuer) => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ Answer: [{ type: 16, data: `"iss=${issuer}"` }] }),
+    });
+    await expect(defaultDnsResolver('example.com')).resolves.toBeNull();
+  });
 });
 
 describe('nodeDnsResolver', () => {
@@ -174,6 +207,16 @@ describe('nodeDnsResolver', () => {
     const result = await freshResolver('example.com');
     expect(result).toBeNull();
 
+    vi.doUnmock('node:dns/promises');
+  });
+
+  it('should reject multiple issuer records from native DNS', async () => {
+    vi.doMock('node:dns/promises', () => ({
+      resolveTxt: vi.fn().mockResolvedValue([['iss=one.example.com'], ['iss=two.example.com']]),
+    }));
+    vi.resetModules();
+    const { nodeDnsResolver: freshResolver } = await import('../src/dns.js');
+    await expect(freshResolver('example.com')).resolves.toBeNull();
     vi.doUnmock('node:dns/promises');
   });
 });

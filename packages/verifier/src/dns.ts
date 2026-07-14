@@ -28,7 +28,15 @@ function parseIssuerFromTxtRecord(txtData: string): string | null {
 
   // Look for iss= prefix
   if (data.startsWith('iss=')) {
-    return data.slice(4).trim();
+    const issuer = data.slice(4).trim();
+    if (!issuer || issuer.includes('/') || issuer.includes('@')) return null;
+    try {
+      const url = new URL(`https://${issuer}`);
+      if (url.hostname !== issuer || url.port || url.username || url.password) return null;
+      return issuer;
+    } catch {
+      return null;
+    }
   }
 
   return null;
@@ -74,17 +82,14 @@ export const defaultDnsResolver: DnsResolver = async (
       return null;
     }
 
-    // TXT record type is 16
+    const issuers: string[] = [];
     for (const answer of data.Answer) {
       if (answer.type === 16) {
         const issuer = parseIssuerFromTxtRecord(answer.data);
-        if (issuer) {
-          return issuer;
-        }
+        if (issuer) issuers.push(issuer);
       }
     }
-
-    return null;
+    return issuers.length === 1 ? (issuers[0] as string) : null;
   } catch {
     return null;
   }
@@ -118,16 +123,13 @@ export const nodeDnsResolver: DnsResolver = async (emailDomain: string): Promise
     const dns = await import('node:dns/promises');
     const records = await dns.resolveTxt(recordName);
 
-    // DNS TXT records can be split into multiple strings, join them
+    const issuers: string[] = [];
     for (const record of records) {
       const txtData = record.join('');
       const issuer = parseIssuerFromTxtRecord(txtData);
-      if (issuer) {
-        return issuer;
-      }
+      if (issuer) issuers.push(issuer);
     }
-
-    return null;
+    return issuers.length === 1 ? (issuers[0] as string) : null;
   } catch {
     return null;
   }

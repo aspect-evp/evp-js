@@ -5,13 +5,26 @@
  */
 
 import type { IssuerMetadata } from '@aspect-evp/core';
-import { EVPError, WELL_KNOWN_PATH } from '@aspect-evp/core';
+import { EVPError, getErrorMessage, SUPPORTED_ALGORITHMS, WELL_KNOWN_PATH } from '@aspect-evp/core';
 import { createLocalJWKSet, createRemoteJWKSet, type JWTVerifyGetKey } from 'jose';
 
 /**
  * Cache for remote JWKS
  */
 const jwksCache = new Map<string, JWTVerifyGetKey>();
+
+function requireHttpsUrl(value: string, field: string): URL {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new EVPError('server_error', `Invalid issuer metadata: ${field} is not a URL`);
+  }
+  if (url.protocol !== 'https:' || url.username || url.password) {
+    throw new EVPError('server_error', `Invalid issuer metadata: ${field} must use HTTPS`);
+  }
+  return url;
+}
 
 /**
  * Fetch issuer metadata from well-known endpoint
@@ -57,6 +70,22 @@ export async function fetchIssuerMetadata(
     if (!metadata.jwks_uri) {
       throw new EVPError('server_error', 'Invalid issuer metadata: missing jwks_uri');
     }
+    requireHttpsUrl(metadata.issuance_endpoint, 'issuance_endpoint');
+    requireHttpsUrl(metadata.jwks_uri, 'jwks_uri');
+    if (metadata.signing_alg_values_supported) {
+      if (
+        metadata.signing_alg_values_supported.length === 0 ||
+        metadata.signing_alg_values_supported.some(
+          (algorithm) =>
+            !SUPPORTED_ALGORITHMS.includes(algorithm as (typeof SUPPORTED_ALGORITHMS)[number])
+        )
+      ) {
+        throw new EVPError(
+          'server_error',
+          'Invalid issuer metadata: unsupported signing algorithm'
+        );
+      }
+    }
 
     return metadata;
   } catch (error) {
@@ -65,7 +94,7 @@ export async function fetchIssuerMetadata(
     }
     throw new EVPError(
       'server_error',
-      `Failed to fetch issuer metadata: ${error instanceof Error ? error.message : String(error)}`
+      `Failed to fetch issuer metadata: ${getErrorMessage(error)}`
     );
   }
 }
@@ -93,22 +122,40 @@ export function createJWKSFetcher(
     fetch?: typeof globalThis.fetch;
   }
 ): JWTVerifyGetKey {
+  requireHttpsUrl(jwksUri, 'jwks_uri');
   // When custom fetch is provided, create a lazy-loading local JWKS
   if (options?.fetch) {
     let localJwks: JWTVerifyGetKey | null = null;
+    let expiresAt = 0;
 
-    // Return a wrapper function that fetches JWKS on first use
     const fetchFn = options.fetch;
-    const wrapper: JWTVerifyGetKey = async (protectedHeader, token) => {
-      if (!localJwks) {
-        const response = await fetchFn(jwksUri);
-        if (!response.ok) {
-          throw new EVPError('server_error', `Failed to fetch JWKS: HTTP ${response.status}`);
-        }
-        const jwksData = (await response.json()) as { keys: JsonWebKey[] };
-        localJwks = createLocalJWKSet(jwksData as Parameters<typeof createLocalJWKSet>[0]);
+    const cacheTtl = options.cacheTtl ?? 600000;
+    const refresh = async (): Promise<JWTVerifyGetKey> => {
+      const response = await fetchFn(jwksUri, { headers: { Accept: 'application/json' } });
+      if (!response.ok) {
+        throw new EVPError('server_error', `Failed to fetch JWKS: HTTP ${response.status}`);
       }
-      return localJwks(protectedHeader, token);
+      const jwksData = (await response.json()) as { keys?: JsonWebKey[] };
+      if (!Array.isArray(jwksData.keys) || jwksData.keys.length === 0) {
+        throw new EVPError('server_error', 'Invalid JWKS: keys must be a non-empty array');
+      }
+      localJwks = createLocalJWKSet(jwksData as Parameters<typeof createLocalJWKSet>[0]);
+      expiresAt = Date.now() + cacheTtl;
+      return localJwks;
+    };
+
+    const wrapper: JWTVerifyGetKey = async (protectedHeader, token) => {
+      const active = !localJwks || Date.now() >= expiresAt ? await refresh() : localJwks;
+      try {
+        return await active(protectedHeader, token);
+      } catch (error) {
+        // A new kid can appear before TTL expiry during emergency key rotation.
+        if (Date.now() < expiresAt) {
+          const refreshed = await refresh();
+          return refreshed(protectedHeader, token);
+        }
+        throw error;
+      }
     };
 
     return wrapper;
@@ -155,7 +202,7 @@ export async function getIssuerJWKS(
   fetchFn: typeof globalThis.fetch = globalThis.fetch
 ): Promise<{ metadata: IssuerMetadata; getKey: JWTVerifyGetKey }> {
   const metadata = await fetchIssuerMetadata(issuerOrigin, fetchFn);
-  const getKey = createJWKSFetcher(metadata.jwks_uri);
+  const getKey = createJWKSFetcher(metadata.jwks_uri, { fetch: fetchFn });
 
   return { metadata, getKey };
 }

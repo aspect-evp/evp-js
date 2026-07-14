@@ -20,12 +20,38 @@ import {
   decodeJWTHeader,
   EVPError,
   getCurrentTimestamp,
+  getErrorMessage,
   isTimestampValid,
+  isValidEmail,
   SD_JWT_TYPE,
   WELL_KNOWN_PATH,
 } from '@aspect-evp/core';
 import { importJWK, type JWK, jwtVerify, SignJWT } from 'jose';
 import { generateKeyPair, isAlgorithmSupported } from './keys.js';
+
+function publicOnlyJwk(key: JsonWebKey): JsonWebKey {
+  const {
+    d: _d,
+    p: _p,
+    q: _q,
+    dp: _dp,
+    dq: _dq,
+    qi: _qi,
+    oth: _oth,
+    ...publicComponents
+  } = key as JsonWebKey & { oth?: unknown };
+  return publicComponents;
+}
+
+function isIssuerIdentifier(value: string): boolean {
+  if (!value || value.includes('/') || value.includes('@')) return false;
+  try {
+    const url = new URL(`https://${value}`);
+    return url.hostname === value && !url.port;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Email Verification Issuer
@@ -54,13 +80,22 @@ import { generateKeyPair, isAlgorithmSupported } from './keys.js';
  */
 export class EmailVerificationIssuer {
   private readonly config: Required<
-    Pick<IssuerConfig, 'issuer' | 'privateKey' | 'kid' | 'algorithm' | 'clockTolerance'>
+    Pick<
+      IssuerConfig,
+      | 'issuer'
+      | 'privateKey'
+      | 'kid'
+      | 'algorithm'
+      | 'clockTolerance'
+      | 'webauthnSupported'
+      | 'privateEmailSupported'
+    >
   >;
 
   constructor(config: IssuerConfig) {
     // Validate required fields
-    if (!config.issuer) {
-      throw new EVPError('invalid_request', 'Issuer identifier is required');
+    if (!isIssuerIdentifier(config.issuer)) {
+      throw new EVPError('invalid_request', 'Issuer must be a hostname without a path or port');
     }
     if (!config.privateKey) {
       throw new EVPError('invalid_request', 'Private key is required');
@@ -80,6 +115,8 @@ export class EmailVerificationIssuer {
       kid: config.kid,
       algorithm,
       clockTolerance: config.clockTolerance ?? DEFAULT_CLOCK_TOLERANCE,
+      webauthnSupported: config.webauthnSupported ?? false,
+      privateEmailSupported: config.privateEmailSupported ?? false,
     };
   }
 
@@ -90,14 +127,25 @@ export class EmailVerificationIssuer {
    * @returns IssuerMetadata object to be served as JSON
    */
   getMetadata(baseUrl: string): IssuerMetadata {
-    // Normalize baseUrl (remove trailing slash)
-    const normalizedUrl = baseUrl.replace(/\/$/, '');
+    let url: URL;
+    try {
+      url = new URL(baseUrl);
+    } catch {
+      throw new EVPError('invalid_request', 'Issuer base URL is invalid');
+    }
+    if (url.protocol !== 'https:' || url.origin !== baseUrl.replace(/\/$/, '')) {
+      throw new EVPError('invalid_request', 'Issuer base URL must be an HTTPS origin');
+    }
+    const normalizedUrl = url.origin;
 
-    return {
+    const metadata: IssuerMetadata = {
       issuance_endpoint: `${normalizedUrl}/email-verification/issuance`,
       jwks_uri: `${normalizedUrl}/email-verification/jwks`,
       signing_alg_values_supported: [this.config.algorithm],
     };
+    if (this.config.webauthnSupported) metadata.webauthn_supported = true;
+    if (this.config.privateEmailSupported) metadata.private_email_supported = true;
+    return metadata;
   }
 
   /**
@@ -108,15 +156,7 @@ export class EmailVerificationIssuer {
   getJWKS(): JWKS {
     // Extract public components from the private key JWK
     // The destructured private key components are intentionally unused
-    const {
-      d: _d,
-      p: _p,
-      q: _q,
-      dp: _dp,
-      dq: _dq,
-      qi: _qi,
-      ...publicComponents
-    } = this.config.privateKey as Record<string, unknown>;
+    const publicComponents = publicOnlyJwk(this.config.privateKey);
 
     // Build public JWK with required fields for JWKS
     const publicJwk = {
@@ -143,6 +183,8 @@ export class EmailVerificationIssuer {
    * @param requestToken - The JWT from the browser
    * @returns The decoded payload and browser's public key
    * @throws EVPError if verification fails
+   * @deprecated The current IETF draft uses HTTP Message Signatures. This
+   * compatibility helper remains for WICG request-token deployments only.
    */
   async verifyRequestToken(requestToken: string): Promise<RequestTokenVerifyResult> {
     if (!requestToken) {
@@ -208,10 +250,7 @@ export class EmailVerificationIssuer {
       if (error instanceof EVPError) {
         throw error;
       }
-      throw new EVPError(
-        'invalid_token',
-        `Token verification failed: ${error instanceof Error ? error.message : String(error)}`
-      );
+      throw new EVPError('invalid_token', `Token verification failed: ${getErrorMessage(error)}`);
     }
   }
 
@@ -226,9 +265,13 @@ export class EmailVerificationIssuer {
    * @param browserPublicKey - The browser's public key from the request token
    * @returns SD-JWT token (ends with ~)
    */
-  async issueToken(email: string, browserPublicKey: JsonWebKey): Promise<string> {
-    if (!email) {
-      throw new EVPError('invalid_request', 'Email is required');
+  async issueToken(
+    email: string,
+    browserPublicKey: JsonWebKey,
+    options: { isPrivateEmail?: boolean } = {}
+  ): Promise<string> {
+    if (!isValidEmail(email)) {
+      throw new EVPError('invalid_request', 'A syntactically valid email is required');
     }
     if (!browserPublicKey) {
       throw new EVPError('invalid_request', 'Browser public key is required');
@@ -245,8 +288,9 @@ export class EmailVerificationIssuer {
       email,
       email_verified: true,
       cnf: {
-        jwk: browserPublicKey,
+        jwk: publicOnlyJwk(browserPublicKey),
       },
+      ...(options.isPrivateEmail ? { is_private_email: true as const } : {}),
     };
 
     // Sign the JWT

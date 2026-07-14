@@ -1,4 +1,10 @@
-import { EVPError, getCurrentTimestamp, WELL_KNOWN_PATH } from '@aspect-evp/core';
+import {
+  base64url,
+  decodeJWTPayload,
+  EVPError,
+  getCurrentTimestamp,
+  WELL_KNOWN_PATH,
+} from '@aspect-evp/core';
 import { importJWK, SignJWT } from 'jose';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { EmailVerificationIssuer } from '../src/issuer.js';
@@ -68,6 +74,19 @@ describe('EmailVerificationIssuer', () => {
           })
       ).toThrow(EVPError);
     });
+
+    it('should reject malformed hostnames and explicit ports', () => {
+      for (const issuer of ['%', 'mail.example.com:443', 'user@mail.example.com']) {
+        expect(
+          () =>
+            new EmailVerificationIssuer({
+              issuer,
+              privateKey: issuerKeyPair.privateKey,
+              kid: 'test-key',
+            })
+        ).toThrow('hostname without a path or port');
+      }
+    });
   });
 
   describe('getMetadata', () => {
@@ -99,6 +118,39 @@ describe('EmailVerificationIssuer', () => {
       expect(metadata.issuance_endpoint).toBe(
         'https://accounts.example.com/email-verification/issuance'
       );
+    });
+
+    it('should reject non-HTTPS metadata origins', () => {
+      const issuer = new EmailVerificationIssuer({
+        issuer: 'mail.example.com',
+        privateKey: issuerKeyPair.privateKey,
+        kid: 'test-key',
+      });
+      expect(() => issuer.getMetadata('http://mail.example.com')).toThrow('HTTPS origin');
+      expect(() => issuer.getMetadata('https://mail.example.com/path')).toThrow('HTTPS origin');
+    });
+
+    it('should reject a malformed metadata URL', () => {
+      const issuer = new EmailVerificationIssuer({
+        issuer: 'mail.example.com',
+        privateKey: issuerKeyPair.privateKey,
+        kid: 'test-key',
+      });
+      expect(() => issuer.getMetadata('not a URL')).toThrow('base URL is invalid');
+    });
+
+    it('should advertise enabled private email and WebAuthn capabilities', () => {
+      const issuer = new EmailVerificationIssuer({
+        issuer: 'mail.example.com',
+        privateKey: issuerKeyPair.privateKey,
+        kid: 'test-key',
+        privateEmailSupported: true,
+        webauthnSupported: true,
+      });
+      expect(issuer.getMetadata('https://mail.example.com')).toMatchObject({
+        private_email_supported: true,
+        webauthn_supported: true,
+      });
     });
   });
 
@@ -159,6 +211,53 @@ describe('EmailVerificationIssuer', () => {
       });
 
       await expect(issuer.verifyRequestToken('')).rejects.toThrow(EVPError);
+    });
+
+    it('should reject malformed token headers before cryptographic verification', async () => {
+      const issuer = new EmailVerificationIssuer({
+        issuer: 'mail.example.com',
+        privateKey: issuerKeyPair.privateKey,
+        kid: 'test-key',
+      });
+      const encode = (value: unknown) => base64url(new TextEncoder().encode(JSON.stringify(value)));
+
+      await expect(issuer.verifyRequestToken('one.two')).rejects.toThrow('Invalid JWT format');
+      await expect(issuer.verifyRequestToken('.payload.signature')).rejects.toThrow(
+        'Missing JWT header'
+      );
+      await expect(
+        issuer.verifyRequestToken(`${encode({ alg: 'EdDSA', typ: 'JWT' })}.payload.signature`)
+      ).rejects.toThrow('must include jwk');
+      await expect(
+        issuer.verifyRequestToken(
+          `${encode({ alg: 'EdDSA', typ: 'not-jwt', jwk: browserKeyPair.publicKey })}.payload.signature`
+        )
+      ).rejects.toThrow('typ must be JWT');
+    });
+
+    it('should wrap signature verification failures', async () => {
+      const issuer = new EmailVerificationIssuer({
+        issuer: 'mail.example.com',
+        privateKey: issuerKeyPair.privateKey,
+        kid: 'test-key',
+      });
+      const browserPrivateKey = await importJWK(browserKeyPair.privateKey, 'EdDSA');
+      const token = await new SignJWT({
+        aud: 'mail.example.com',
+        iat: getCurrentTimestamp(),
+        email: 'user@example.com',
+      })
+        .setProtectedHeader({
+          alg: 'EdDSA',
+          typ: 'JWT',
+          jwk: browserKeyPair.publicKey,
+        })
+        .sign(browserPrivateKey);
+      const parts = token.split('.');
+      parts[2] = 'AAAA';
+      await expect(issuer.verifyRequestToken(parts.join('.'))).rejects.toThrow(
+        'Token verification failed'
+      );
     });
 
     it('should reject token with wrong audience', async () => {
@@ -253,6 +352,33 @@ describe('EmailVerificationIssuer', () => {
       expect(parts).toHaveLength(3);
     });
 
+    it('should never embed browser private key material in cnf.jwk', async () => {
+      const issuer = new EmailVerificationIssuer({
+        issuer: 'mail.example.com',
+        privateKey: issuerKeyPair.privateKey,
+        kid: 'test-key',
+      });
+      const token = await issuer.issueToken('user@example.com', browserKeyPair.privateKey);
+      const payloadPart = token.slice(0, -1).split('.')[1] ?? '';
+      const payload = decodeJWTPayload<{ cnf: { jwk: JsonWebKey } }>(payloadPart);
+      expect(payload.cnf.jwk.d).toBeUndefined();
+    });
+
+    it('should mark explicitly requested private email tokens', async () => {
+      const issuer = new EmailVerificationIssuer({
+        issuer: 'mail.example.com',
+        privateKey: issuerKeyPair.privateKey,
+        kid: 'test-key',
+      });
+      const token = await issuer.issueToken('relay@private.example', browserKeyPair.publicKey, {
+        isPrivateEmail: true,
+      });
+      const payload = decodeJWTPayload<{ is_private_email?: boolean }>(
+        token.slice(0, -1).split('.')[1] ?? ''
+      );
+      expect(payload.is_private_email).toBe(true);
+    });
+
     it('should reject empty email', async () => {
       const issuer = new EmailVerificationIssuer({
         issuer: 'mail.example.com',
@@ -261,7 +387,7 @@ describe('EmailVerificationIssuer', () => {
       });
 
       await expect(issuer.issueToken('', browserKeyPair.publicKey)).rejects.toThrow(
-        'Email is required'
+        'syntactically valid email'
       );
     });
 

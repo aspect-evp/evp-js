@@ -1,4 +1,6 @@
-# Implementation Plan
+# Historical Implementation Plan
+
+> Archived notes for the original 2025 implementation. This is not the current protocol or API reference. See the root README and package documentation for the implementation aligned with `draft-hardt-email-verification-00`.
 
 Este documento es una guía para implementar los paquetes EVP con Claude Code.
 

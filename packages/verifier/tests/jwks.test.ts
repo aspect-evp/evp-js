@@ -1,4 +1,5 @@
 import { EVPError, WELL_KNOWN_PATH } from '@aspect-evp/core';
+import { exportJWK, generateKeyPair } from 'jose';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   clearJWKSCache,
@@ -109,6 +110,69 @@ describe('fetchIssuerMetadata', () => {
     );
   });
 
+  it('should reject non-HTTPS endpoint metadata', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        issuance_endpoint: 'https://issuer.example.com/issuance',
+        jwks_uri: 'http://issuer.example.com/jwks',
+      }),
+    });
+    await expect(fetchIssuerMetadata('https://issuer.example.com', mockFetch)).rejects.toThrow(
+      'must use HTTPS'
+    );
+  });
+
+  it('should reject malformed and credential-bearing metadata URLs', async () => {
+    for (const jwks_uri of ['not a URL', 'https://user:pass@issuer.example.com/jwks']) {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          issuance_endpoint: 'https://issuer.example.com/issuance',
+          jwks_uri,
+        }),
+      });
+      await expect(fetchIssuerMetadata('https://issuer.example.com', mockFetch)).rejects.toThrow(
+        'Invalid issuer metadata'
+      );
+    }
+  });
+
+  it('should reject unsupported signing algorithms', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        issuance_endpoint: 'https://issuer.example.com/issuance',
+        jwks_uri: 'https://issuer.example.com/jwks',
+        signing_alg_values_supported: ['none'],
+      }),
+    });
+    await expect(fetchIssuerMetadata('https://issuer.example.com', mockFetch)).rejects.toThrow(
+      'unsupported signing algorithm'
+    );
+  });
+
+  it('should reject an empty signing algorithm list', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        issuance_endpoint: 'https://issuer.example.com/issuance',
+        jwks_uri: 'https://issuer.example.com/jwks',
+        signing_alg_values_supported: [],
+      }),
+    });
+    await expect(fetchIssuerMetadata('https://issuer.example.com', mockFetch)).rejects.toThrow(
+      'unsupported signing algorithm'
+    );
+  });
+
+  it('normalizes non-Error fetch failures', async () => {
+    mockFetch.mockRejectedValueOnce('offline');
+    await expect(fetchIssuerMetadata('https://issuer.example.com', mockFetch)).rejects.toThrow(
+      'offline'
+    );
+  });
+
   it('should re-throw EVPError as-is', async () => {
     mockFetch.mockImplementationOnce(() => {
       throw new EVPError('invalid_request', 'Custom error');
@@ -165,6 +229,23 @@ describe('createJWKSFetcher', () => {
     ).rejects.toThrow('Failed to fetch JWKS');
   });
 
+  it.each([
+    {},
+    { keys: [] },
+    { keys: 'invalid' },
+  ])('should reject malformed JWKS documents', async (document) => {
+    const mockFetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => document,
+    });
+    const fetcher = createJWKSFetcher('https://issuer.example.com/jwks', {
+      fetch: mockFetch,
+    });
+    await expect(
+      fetcher({ alg: 'EdDSA' }, { payload: '', protectedHeader: { alg: 'EdDSA' }, signature: '' })
+    ).rejects.toThrow('keys must be a non-empty array');
+  });
+
   it('should cache JWKS fetchers', () => {
     const fetcher1 = createJWKSFetcher('https://issuer.example.com/jwks');
     const fetcher2 = createJWKSFetcher('https://issuer.example.com/jwks');
@@ -177,6 +258,66 @@ describe('createJWKSFetcher', () => {
     const fetcher2 = createJWKSFetcher('https://issuer2.example.com/jwks');
 
     expect(fetcher1).not.toBe(fetcher2);
+  });
+
+  it('should refresh immediately when a new kid appears', async () => {
+    const firstPair = await generateKeyPair('EdDSA', { extractable: true });
+    const secondPair = await generateKeyPair('EdDSA', { extractable: true });
+    const first = { ...(await exportJWK(firstPair.publicKey)), kid: 'key-1', alg: 'EdDSA' };
+    const second = { ...(await exportJWK(secondPair.publicKey)), kid: 'key-2', alg: 'EdDSA' };
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ keys: [first] }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ keys: [second] }) });
+    const fetcher = createJWKSFetcher('https://issuer.example.com/jwks', {
+      fetch: mockFetch,
+      cacheTtl: 60000,
+    });
+    await expect(
+      fetcher(
+        { alg: 'EdDSA', kid: 'key-2' },
+        { payload: '', protectedHeader: { alg: 'EdDSA', kid: 'key-2' }, signature: '' }
+      )
+    ).resolves.toBeDefined();
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('should reuse a valid local JWKS before its TTL expires', async () => {
+    const pair = await generateKeyPair('EdDSA', { extractable: true });
+    const key = { ...(await exportJWK(pair.publicKey)), kid: 'key-1', alg: 'EdDSA' };
+    const mockFetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ keys: [key] }) });
+    const fetcher = createJWKSFetcher('https://issuer.example.com/jwks', {
+      fetch: mockFetch,
+      cacheTtl: 60000,
+    });
+    const token = {
+      payload: '',
+      protectedHeader: { alg: 'EdDSA', kid: 'key-1' },
+      signature: '',
+    };
+    await fetcher({ alg: 'EdDSA', kid: 'key-1' }, token);
+    await fetcher({ alg: 'EdDSA', kid: 'key-1' }, token);
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('should preserve lookup errors after an already-expired refresh', async () => {
+    const pair = await generateKeyPair('EdDSA', { extractable: true });
+    const key = { ...(await exportJWK(pair.publicKey)), kid: 'known', alg: 'EdDSA' };
+    const mockFetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ keys: [key] }) });
+    const fetcher = createJWKSFetcher('https://issuer.example.com/jwks', {
+      fetch: mockFetch,
+      cacheTtl: 0,
+    });
+    await expect(
+      fetcher(
+        { alg: 'EdDSA', kid: 'unknown' },
+        { payload: '', protectedHeader: { alg: 'EdDSA', kid: 'unknown' }, signature: '' }
+      )
+    ).rejects.toThrow();
+  });
+
+  it('should reject a malformed JWKS URI before creating a fetcher', () => {
+    expect(() => createJWKSFetcher('not a URL')).toThrow('is not a URL');
   });
 });
 

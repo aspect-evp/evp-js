@@ -1,426 +1,82 @@
-# @aspect-evp/core
+<!-- generated-by: gsd-doc-writer -->
+# Core API
 
-> Shared types, constants, and utilities for the Email Verification Protocol.
+[Documentation home](README.md) · [Protocol flow](PROTOCOL-FLOW.md) · [Issuer](issuer.md) · [Verifier](verifier.md)
 
-## Overview
+`@aspect-evp/core` contains the protocol types, constants, token utilities, HTTP Message Signature profile, and test fixtures shared by issuers and relying parties.
 
-`@aspect-evp/core` is the foundation package that provides:
+The implementation tracks `draft-hardt-email-verification-00`. The WICG `request_token` format is retained only as a deprecated compatibility surface in the issuer package.
 
-- TypeScript type definitions for all EVP data structures
-- Utility functions for parsing and validating tokens
-- Constants and error types
-- Testing utilities for simulating the browser's role
-
-**This package has zero dependencies.**
-
-## Installation
-
-```bash
-npm install @aspect-evp/core
-```
-
-## API Reference
-
-### Types
-
-#### `IssuerMetadata`
-
-The structure served at `/.well-known/email-verification`:
+## Protocol constants
 
 ```typescript
-interface IssuerMetadata {
-  /** URL where browsers POST request tokens */
-  issuance_endpoint: string;
-  
-  /** URL of the JWKS containing issuer's public keys */
-  jwks_uri: string;
-  
-  /** Supported signing algorithms. Default: ["EdDSA"] */
-  signing_alg_values_supported?: string[];
-}
+import {
+  createSignedIssuanceRequest,
+  DNS_RECORD_PREFIX, // _email-verification
+  WELL_KNOWN_PATH,   // /.well-known/email-verification
+  SD_JWT_TYPE,       // evt+jwt
+  KB_JWT_TYPE,       // kb+jwt
+  parseSDJWTKB,
+  verifyHttpMessageSignature,
+} from '@aspect-evp/core';
 ```
 
-**Example:**
-```json
-{
-  "issuance_endpoint": "https://accounts.gmail.com/email-verification/issuance",
-  "jwks_uri": "https://accounts.gmail.com/email-verification/jwks",
-  "signing_alg_values_supported": ["EdDSA", "ES256"]
-}
-```
-
-#### `RequestTokenPayload`
-
-The JWT payload sent by the browser to the issuer:
+## EVT+KB parsing
 
 ```typescript
-interface RequestTokenPayload {
-  /** Issuer identifier (must match the issuer's domain) */
-  aud: string;
-  
-  /** Unix timestamp when the token was created */
-  iat: number;
-  
-  /** Optional unique identifier for the token */
-  jti?: string;
-  
-  /** Email address to verify */
-  email: string;
-}
+const { sdJwt, kbJwt, sdJwtForHash } = parseSDJWTKB(token);
 ```
 
-#### `RequestTokenHeader`
+- `sdJwt` includes the required trailing `~`.
+- `sdJwtForHash` also includes the trailing `~`, as required by the current draft.
+- `kbJwt` is `null` when key binding is absent.
 
-The JWT header of the request token:
+## HTTP Message Signatures
+
+The draft profile covers `@method`, `@authority`, `@path`, and `signature-key`. When a Cookie header is present, it is covered as well.
 
 ```typescript
-interface RequestTokenHeader {
-  /** Signing algorithm (e.g., "EdDSA") */
-  alg: string;
-  
-  /** Token type, must be "JWT" */
-  typ: "JWT";
-  
-  /** Browser's ephemeral public key in JWK format */
-  jwk: JsonWebKey;
-}
+const request = await createSignedIssuanceRequest(
+  'https://issuer.example/email-verification/issuance',
+  { email: 'user@example.com' },
+  ephemeralPrivateJwk,
+  { cookie: 'session=...' }
+);
+
+const { publicKey, algorithm } = await verifyHttpMessageSignature(request);
 ```
 
-#### `IssuanceTokenPayload`
+Supported key profiles are Ed25519/EdDSA, P-256/ES256, P-384/ES384, and RSA/RS256. Signature timestamps default to a 60-second tolerance.
 
-The SD-JWT payload returned by the issuer:
+## Metadata extensions
 
-```typescript
-interface IssuanceTokenPayload {
-  /** Issuer identifier */
-  iss: string;
-  
-  /** Unix timestamp when issued */
-  iat: number;
-  
-  /** Confirmation claim containing browser's public key */
-  cnf: {
-    jwk: JsonWebKey;
-  };
-  
-  /** The verified email address */
-  email: string;
-  
-  /** Must be true for valid verification */
-  email_verified: true;
-}
-```
+`IssuerMetadata` includes `issuance_endpoint`, `jwks_uri`, `signing_alg_values_supported`, `webauthn_supported`, and `private_email_supported`.
 
-#### `IssuanceTokenHeader`
-
-The SD-JWT header:
-
-```typescript
-interface IssuanceTokenHeader {
-  /** Signing algorithm */
-  alg: string;
-  
-  /** Key ID referencing key in JWKS */
-  kid: string;
-  
-  /** Token type for EVP */
-  typ: "evp+sd-jwt";
-}
-```
-
-#### `KeyBindingPayload`
-
-The KB-JWT payload created by the browser:
-
-```typescript
-interface KeyBindingPayload {
-  /** RP's origin (e.g., "https://example.com") */
-  aud: string;
-  
-  /** Nonce provided by the RP */
-  nonce: string;
-  
-  /** Unix timestamp */
-  iat: number;
-  
-  /** SHA-256 hash of the SD-JWT (base64url encoded) */
-  sd_hash: string;
-  
-  /** Optional additional entropy */
-  salt?: string;
-}
-```
-
-#### `VerificationResult`
-
-The result of successful verification:
-
-```typescript
-interface VerificationResult {
-  /** The verified email address */
-  email: string;
-  
-  /** Always true for successful verification */
-  email_verified: boolean;
-  
-  /** The issuer that verified the email */
-  issuer: string;
-  
-  /** When the token was issued */
-  issuedAt: Date;
-}
-```
-
-#### `EVPError`
-
-Custom error class for EVP-specific errors:
-
-```typescript
-type EVPErrorCode = 
-  | "invalid_request"      // Malformed request
-  | "invalid_token"        // Token verification failed
-  | "authentication_required" // User not authenticated
-  | "server_error";        // Internal error
-
-class EVPError extends Error {
-  code: EVPErrorCode;
-  description?: string;
-  
-  constructor(code: EVPErrorCode, description?: string);
-}
-```
-
-### Utility Functions
-
-#### `parseSDJWTKB(token: string)`
-
-Parses an SD-JWT+KB token into its components:
-
-```typescript
-function parseSDJWTKB(token: string): {
-  sdJwt: string;      // The SD-JWT part (ends with ~)
-  kbJwt: string | null; // The KB-JWT part (if present)
-}
-```
-
-**Example:**
-```typescript
-import { parseSDJWTKB } from '@aspect-evp/core';
-
-const token = 'eyJhbGciOiJFZERTQSJ9.eyJpc3MiOiJpc3N1ZXIifQ.signature~eyJhbGciOiJFZERTQSJ9.eyJhdWQiOiJycCJ9.sig2';
-
-const { sdJwt, kbJwt } = parseSDJWTKB(token);
-// sdJwt: 'eyJhbGciOiJFZERTQSJ9.eyJpc3MiOiJpc3N1ZXIifQ.signature~'
-// kbJwt: 'eyJhbGciOiJFZERTQSJ9.eyJhdWQiOiJycCJ9.sig2'
-```
-
-#### `getEmailDomain(email: string)`
-
-Extracts the domain from an email address:
-
-```typescript
-function getEmailDomain(email: string): string;
-```
-
-**Example:**
-```typescript
-import { getEmailDomain } from '@aspect-evp/core';
-
-getEmailDomain('user@gmail.com'); // 'gmail.com'
-getEmailDomain('admin@mail.company.co.uk'); // 'mail.company.co.uk'
-```
-
-**Throws:** `EVPError` with code `invalid_request` if email format is invalid.
-
-#### `isValidEmail(email: string)`
-
-Validates email format (basic validation):
-
-```typescript
-function isValidEmail(email: string): boolean;
-```
-
-**Note:** This is intentionally simple. Email validation is complex, and this only checks basic format. The actual verification is done by the issuer.
-
-#### `sha256(data: string)`
-
-Computes SHA-256 hash and returns base64url-encoded result:
-
-```typescript
-async function sha256(data: string): Promise<string>;
-```
-
-**Example:**
-```typescript
-import { sha256 } from '@aspect-evp/core';
-
-const hash = await sha256('hello world');
-// 'uU0nuZNNPgilLlLX2n2r-sSE7-N6U4DukIj3rOLvzek'
-```
-
-#### `base64url(buffer: Uint8Array)`
-
-Encodes a buffer as base64url (no padding):
-
-```typescript
-function base64url(buffer: Uint8Array): string;
-```
-
-#### `base64urlDecode(str: string)`
-
-Decodes a base64url string to Uint8Array:
-
-```typescript
-function base64urlDecode(str: string): Uint8Array;
-```
-
-### Constants
-
-```typescript
-/** Default signing algorithm */
-export const DEFAULT_ALGORITHM = 'EdDSA';
-
-/** Clock tolerance for timestamp validation (seconds) */
-export const DEFAULT_CLOCK_TOLERANCE = 60;
-
-/** DNS record prefix for EVP issuer discovery */
-export const DNS_RECORD_PREFIX = '_email-verification';
-
-/** Well-known path for issuer metadata */
-export const WELL_KNOWN_PATH = '/.well-known/email-verification';
-
-/** SD-JWT type header value */
-export const SD_JWT_TYPE = 'evp+sd-jwt';
-
-/** KB-JWT type header value */
-export const KB_JWT_TYPE = 'kb+jwt';
-```
-
-## Testing Utilities
-
-### `createTestFlow(config)`
-
-Creates a complete test environment with mocks for EVP integration tests:
+## Test fixtures
 
 ```typescript
 import { createTestFlow } from '@aspect-evp/core/testing';
-import { EmailVerificationVerifier } from '@aspect-evp/verifier';
 
-const testFlow = await createTestFlow({
-  issuer: 'issuer.example.com',
-  rpOrigin: 'https://myapp.example.com',
+const flow = await createTestFlow({
+  issuer: 'issuer.example',
+  rpOrigin: 'https://rp.example',
 });
 
-// Create verifier with test mocks
-const verifier = new EmailVerificationVerifier({
-  rpOrigin: 'https://myapp.example.com',
-  dnsResolver: testFlow.dnsResolver,
-  fetch: testFlow.fetch,
-});
-
-// Create a token simulating the browser flow
-const token = await testFlow.createToken('user@example.com', 'test-nonce');
-
-// Verify the token
-const result = await verifier.verify(token, 'test-nonce');
-console.log(result.email); // 'user@example.com'
+const token = await flow.createToken('user@example.com', nonce);
 ```
 
-**Returns:**
-- `issuerPublicJwk` - Issuer's public key in JWK format
-- `browserPublicJwk` - Browser's public key in JWK format
-- `metadata` - Issuer metadata for `/.well-known/email-verification`
-- `dnsResolver` - Mock DNS resolver (pass to verifier config)
-- `fetch` - Mock fetch for metadata/JWKS (pass to verifier config)
-- `createToken(email, nonce)` - Creates SD-JWT+KB token for testing
+Fixtures create `evt+jwt` tokens and hash the complete EVT including its trailing `~`.
 
-### `MockDnsResolver`
+## Error handling
 
-A configurable mock DNS resolver for testing multiple domains:
+`EVPError` carries a machine-readable code, optional description, JSON serialization, and an HTTP status mapping. `toEVPError()` normalizes unknown failures, while `getErrorMessage()` extracts a safe message from values thrown by JavaScript or dependencies.
 
-```typescript
-import { MockDnsResolver } from '@aspect-evp/core/testing';
+## Runtime requirements
 
-const mockDns = new MockDnsResolver();
-mockDns.addRecord('gmail.com', 'accounts.google.com');
-mockDns.addRecord('example.com', 'issuer.example.com');
+- Node.js 20 or newer.
+- Modern browser and edge runtimes with Web Crypto, `Request`, `Response`, `fetch`, `atob`, and `btoa`.
 
-const verifier = new EmailVerificationVerifier({
-  rpOrigin: 'https://myapp.com',
-  dnsResolver: mockDns.resolve,
-});
-```
+## References
 
-### `createMockResolver(records)`
-
-Simple function-based mock for quick tests:
-
-```typescript
-import { createMockResolver } from '@aspect-evp/core/testing';
-
-const resolver = createMockResolver({
-  'gmail.com': 'accounts.google.com',
-  'example.com': 'issuer.example.com',
-});
-```
-
-### `generateNonce(length?)`
-
-Generates a cryptographically random nonce:
-
-```typescript
-import { generateNonce } from '@aspect-evp/core/testing';
-
-const nonce = generateNonce(); // 16 bytes, base64url encoded
-```
-
-## Implementation Notes
-
-### Why These Specific Types?
-
-The types in this package are derived directly from the [WICG EVP specification](https://github.com/WICG/email-verification-protocol). We've made them:
-
-1. **Strict where the spec is strict** - Required fields are required
-2. **Flexible where the spec allows** - Optional fields are optional
-3. **Documented with spec references** - Each type links to relevant spec sections
-
-### Browser Compatibility
-
-The utility functions use:
-- `crypto.subtle` for hashing (available in all modern environments)
-- `TextEncoder` for string encoding
-- `atob`/`btoa` for base64 (with polyfill notes for Node.js < 16)
-
-### Bundle Size
-
-This package is designed to be minimal:
-- Zero dependencies
-- Tree-shakeable exports
-- ~2KB minified + gzipped (estimated)
-
-## Limitations
-
-### What This Package Does NOT Provide
-
-1. **HTTP clients** - You bring your own `fetch`
-2. **DNS resolution** - Provided by `@aspect-evp/verifier`
-3. **Key generation** - Provided by `@aspect-evp/issuer`
-4. **Framework integrations** - This is framework-agnostic
-
-### Known Limitations
-
-1. **Email validation is basic** - Complex email validation is out of scope
-2. **No internationalized email support** - IDN emails may need preprocessing
-3. **Timestamps are Unix seconds** - Millisecond precision is not supported
-
-## Changelog
-
-### 0.1.0 (Unreleased)
-
-- Initial implementation
-- Core types and utilities
-- Testing utilities
-
-## License
-
-MIT
+- [IETF Email Verification Protocol draft](https://datatracker.ietf.org/doc/draft-hardt-email-verification/)
+- [WICG Email Verification API](https://github.com/WICG/email-verification)

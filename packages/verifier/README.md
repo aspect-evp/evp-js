@@ -14,13 +14,13 @@ npm install @aspect-evp/verifier
 ## Usage
 
 ```typescript
-import { EmailVerificationVerifier } from '@aspect-evp/verifier';
+import { EmailVerificationVerifier, EVPError } from '@aspect-evp/verifier';
 
 const verifier = new EmailVerificationVerifier({
   rpOrigin: 'https://myapp.example.com'
 });
 
-// When you receive an SD-JWT+KB from the browser
+// When the hidden email-verification-token form field is submitted
 async function handleEmailVerification(sdJwtKb: string, sessionNonce: string) {
   try {
     const result = await verifier.verify(sdJwtKb, sessionNonce);
@@ -77,14 +77,16 @@ const verifier = new EmailVerificationVerifier({
 ```typescript
 interface VerificationResult {
   email: string;      // Verified email address
+  email_verified: boolean; // Always true after successful verification
   issuer: string;     // Issuer domain
   issuedAt: Date;     // Token issuance time
+  isPrivateEmail?: boolean;
 }
 ```
 
 ## Documentation
 
-See the [full documentation](https://github.com/aspect/evp/blob/main/docs/verifier.md) for complete API reference.
+See the [full documentation](https://github.com/aspect-evp/evp-js/blob/main/docs/verifier.md) for complete API reference.
 
 ## License
 
