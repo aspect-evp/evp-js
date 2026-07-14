@@ -4,12 +4,10 @@
  * Utility functions for parsing, encoding, and validating EVP data.
  */
 
-import { webcrypto } from 'node:crypto';
 import { EVPError } from './errors.js';
 import type { ParsedSDJWTKB } from './types.js';
 
-// Use webcrypto for Node.js compatibility (globalThis.crypto not available in Node 18)
-const cryptoSubtle = webcrypto.subtle;
+const cryptoSubtle = globalThis.crypto.subtle;
 
 /**
  * Parse an SD-JWT+KB token into its components
@@ -26,7 +24,7 @@ const cryptoSubtle = webcrypto.subtle;
  * const { sdJwt, kbJwt, sdJwtForHash } = parseSDJWTKB(token);
  * // sdJwt: 'eyJ...~'
  * // kbJwt: 'eyJ...' or null
- * // sdJwtForHash: 'eyJ...' (without trailing ~)
+ * // sdJwtForHash: 'eyJ...~' (including trailing ~)
  * ```
  */
 export function parseSDJWTKB(token: string): ParsedSDJWTKB {
@@ -46,11 +44,11 @@ export function parseSDJWTKB(token: string): ParsedSDJWTKB {
   // SD-JWT is everything up to and including the ~
   const sdJwt = token.substring(0, tildeIndex + 1);
 
-  // For hashing, we need the SD-JWT without the trailing ~
-  const sdJwtForHash = token.substring(0, tildeIndex);
+  // SD-JWT key binding hashes the complete EVT, including its trailing ~.
+  const sdJwtForHash = sdJwt;
 
   // Validate SD-JWT has proper JWT structure (header.payload.signature)
-  const jwtParts = sdJwtForHash.split('.');
+  const jwtParts = token.substring(0, tildeIndex).split('.');
   if (jwtParts.length !== 3) {
     throw new EVPError(
       'invalid_request',

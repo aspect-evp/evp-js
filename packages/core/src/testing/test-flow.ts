@@ -4,7 +4,7 @@
  * Provides utilities for creating complete test scenarios for the
  * Email Verification Protocol (WICG).
  *
- * @see https://github.com/WICG/email-verification-protocol
+ * @see https://datatracker.ietf.org/doc/draft-hardt-email-verification/
  */
 
 import type { IssuerMetadata } from '../types.js';
@@ -166,7 +166,7 @@ export async function createTestFlow(config: TestFlowConfig): Promise<TestFlow> 
       email_verified: true,
       cnf: { jwk: browserPublicJwk },
     })
-      .setProtectedHeader({ alg: algorithm, typ: 'evp+sd-jwt', kid: 'test-key-1' })
+      .setProtectedHeader({ alg: algorithm, typ: 'evt+jwt', kid: 'test-key-1' })
       .sign(issuerKeys.privateKey);
 
     // KB-JWT (signed by browser, binds token to RP)
@@ -174,7 +174,7 @@ export async function createTestFlow(config: TestFlowConfig): Promise<TestFlow> 
       aud: rpOrigin,
       nonce,
       iat,
-      sd_hash: await sha256(sdJwt),
+      sd_hash: await sha256(`${sdJwt}~`),
     })
       .setProtectedHeader({ alg: algorithm, typ: 'kb+jwt' })
       .sign(browserKeys.privateKey);

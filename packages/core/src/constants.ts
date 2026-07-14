@@ -2,7 +2,7 @@
  * EVP Protocol Constants
  *
  * These constants are defined by the WICG Email Verification Protocol specification.
- * @see https://github.com/WICG/email-verification-protocol
+ * @see https://datatracker.ietf.org/doc/draft-hardt-email-verification/
  */
 
 /** Default signing algorithm for EVP tokens */
@@ -17,8 +17,8 @@ export const DNS_RECORD_PREFIX = '_email-verification';
 /** Well-known path for issuer metadata */
 export const WELL_KNOWN_PATH = '/.well-known/email-verification';
 
-/** SD-JWT type header value for EVP issuance tokens */
-export const SD_JWT_TYPE = 'evp+sd-jwt';
+/** EVT JWT type header value */
+export const SD_JWT_TYPE = 'evt+jwt';
 
 /** KB-JWT type header value for key binding tokens */
 export const KB_JWT_TYPE = 'kb+jwt';

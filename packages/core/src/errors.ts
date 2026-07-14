@@ -72,6 +72,9 @@ export class EVPError extends Error {
         return 401;
       case 'invalid_request':
       case 'invalid_token':
+      case 'invalid_signature':
+      case 'private_email_not_supported':
+      case 'invalid_directed_email':
         return 400;
       case 'server_error':
         return 500;
@@ -88,6 +91,11 @@ export function isEVPError(error: unknown): error is EVPError {
   return error instanceof EVPError;
 }
 
+/** Return a safe message for values thrown by JavaScript or third-party code. */
+export function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 /**
  * Create an EVPError from an unknown error
  *
@@ -99,8 +107,8 @@ export function toEVPError(error: unknown): EVPError {
   }
 
   if (error instanceof Error) {
-    return new EVPError('server_error', error.message);
+    return new EVPError('server_error', getErrorMessage(error));
   }
 
-  return new EVPError('server_error', String(error));
+  return new EVPError('server_error', getErrorMessage(error));
 }

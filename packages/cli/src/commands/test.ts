@@ -36,9 +36,9 @@ function createSteps(): Step[] {
     { name: 'Generate test keys', status: 'pending' },
     { name: 'Configure mock DNS', status: 'pending' },
     { name: 'Generate session nonce', status: 'pending' },
-    { name: 'Issue SD-JWT token', status: 'pending' },
+    { name: 'Issue EVT', status: 'pending' },
     { name: 'Create Key Binding JWT', status: 'pending' },
-    { name: 'Verify SD-JWT+KB token', status: 'pending' },
+    { name: 'Verify EVT+KB token', status: 'pending' },
   ];
 }
 

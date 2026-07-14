@@ -32,11 +32,17 @@ export { EmailVerificationIssuer } from './issuer.js';
 // Key utilities
 export { generateKeyPair, getCurveForAlgorithm, isAlgorithmSupported } from './keys.js';
 export type {
+  CreatePrivateEmail,
+  CreateWebAuthnChallenge,
   HandleIssuanceResult,
   IssuanceErrorResponse,
   IssuanceSuccessResponse,
   IssuerMiddleware,
+  IssuerMiddlewareOptions,
+  VerifyDirectedEmail,
   VerifyUserOwnsEmail,
+  VerifyWebAuthnResponse,
+  WebAuthnChallengeResponse,
 } from './middleware.js';
 // Middleware helpers
 export { createIssuerMiddleware, toResponse } from './middleware.js';

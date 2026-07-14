@@ -37,13 +37,13 @@
   },
   "dependencies": {
     "@aspect-evp/core": "workspace:*",
-    "jose": "^6.1.3"
+    "jose": "^6.2.1"
   },
   "devDependencies": {
     "typescript": "^5.3.0"
   },
   "peerDependencies": {
-    "@aspect-evp/core": "^0.1.1"
+    "@aspect-evp/core": "^0.1.1 || ^0.2.0"
   },
   "publishConfig": {
     "access": "public"

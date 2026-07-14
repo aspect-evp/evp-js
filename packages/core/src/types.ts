@@ -2,7 +2,7 @@
  * EVP Protocol Type Definitions
  *
  * Type definitions for the WICG Email Verification Protocol.
- * @see https://github.com/WICG/email-verification-protocol
+ * @see https://datatracker.ietf.org/doc/draft-hardt-email-verification/
  */
 
 import type { SupportedAlgorithm } from './constants.js';
@@ -13,14 +13,17 @@ import type { SupportedAlgorithm } from './constants.js';
 export type EVPErrorCode =
   | 'invalid_request'
   | 'invalid_token'
+  | 'invalid_signature'
   | 'authentication_required'
+  | 'private_email_not_supported'
+  | 'invalid_directed_email'
   | 'server_error';
 
 /**
  * Issuer metadata served at /.well-known/email-verification
  */
 export interface IssuerMetadata {
-  /** URL where browsers POST request tokens */
+  /** URL where browsers POST signed issuance requests */
   issuance_endpoint: string;
 
   /** URL of the JWKS containing issuer's public keys */
@@ -28,10 +31,47 @@ export interface IssuerMetadata {
 
   /** Supported signing algorithms. Default: ["EdDSA"] */
   signing_alg_values_supported?: string[];
+
+  /** Whether WebAuthn fallback authentication is supported. Default: false */
+  webauthn_supported?: boolean;
+
+  /** Whether private email addresses are supported. Default: false */
+  private_email_supported?: boolean;
+}
+
+/** JSON body sent to the issuance endpoint. */
+export interface IssuanceRequest {
+  email: string;
+  private_email?: boolean;
+  directed_email?: string;
+  webauthn_response?: WebAuthnResponse;
+}
+
+/** WebAuthn assertion forwarded by the browser to the issuer. */
+export interface WebAuthnResponse {
+  id: string;
+  rawId: string;
+  response: {
+    authenticatorData: string;
+    clientDataJSON: string;
+    signature: string;
+    userHandle?: string | null;
+  };
+  type: 'public-key';
+}
+
+/** WebAuthn challenge returned by an issuer when cookie authentication is unavailable. */
+export interface WebAuthnChallenge {
+  challenge: string;
+  timeout?: number;
+  rpId?: string;
+  allowCredentials?: Array<{ type: 'public-key'; id: string }>;
+  userVerification?: 'required' | 'preferred' | 'discouraged';
 }
 
 /**
  * JWT payload sent by the browser to the issuer (request token)
+ * @deprecated The current IETF draft uses an HTTP Message Signature over a JSON request.
  */
 export interface RequestTokenPayload {
   /** Issuer identifier (must match the issuer's domain) */
@@ -49,6 +89,7 @@ export interface RequestTokenPayload {
 
 /**
  * JWT header of the request token
+ * @deprecated The current IETF draft uses Signature-Key instead.
  */
 export interface RequestTokenHeader {
   /** Signing algorithm (e.g., "EdDSA") */
@@ -81,6 +122,9 @@ export interface IssuanceTokenPayload {
 
   /** Must be true for valid verification */
   email_verified: true;
+
+  /** Present and true when the issuer returned a private email address. */
+  is_private_email?: true;
 }
 
 /**
@@ -94,7 +138,7 @@ export interface IssuanceTokenHeader {
   kid: string;
 
   /** Token type for EVP */
-  typ: 'evp+sd-jwt';
+  typ: 'evt+jwt';
 }
 
 /**
@@ -143,13 +187,16 @@ export interface VerificationResult {
 
   /** When the token was issued */
   issuedAt: Date;
+
+  /** True when the verified address is a private relay address. */
+  isPrivateEmail?: boolean;
 }
 
 /**
  * Configuration for EmailVerificationIssuer
  */
 export interface IssuerConfig {
-  /** Issuer identifier (eTLD+1 domain) */
+  /** Issuer identifier (hostname without scheme, path, credentials, or port) */
   issuer: string;
 
   /** Private signing key in JWK format */
@@ -163,6 +210,12 @@ export interface IssuerConfig {
 
   /** Clock tolerance in seconds (default: 60) */
   clockTolerance?: number;
+
+  /** Advertise support for WebAuthn fallback authentication. */
+  webauthnSupported?: boolean;
+
+  /** Advertise support for private email addresses. */
+  privateEmailSupported?: boolean;
 }
 
 /**
@@ -192,6 +245,7 @@ export type DnsResolver = (emailDomain: string) => Promise<string | null>;
 
 /**
  * Result of verifying a request token
+ * @deprecated Compatibility type for the legacy WICG request-token flow.
  */
 export interface RequestTokenVerifyResult {
   /** Decoded token payload */
@@ -230,6 +284,6 @@ export interface ParsedSDJWTKB {
   /** The KB-JWT part (if present) */
   kbJwt: string | null;
 
-  /** The SD-JWT without trailing ~ (for hashing) */
+  /** The complete SD-JWT including its trailing ~ (for hashing) */
   sdJwtForHash: string;
 }

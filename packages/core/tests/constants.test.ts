@@ -35,8 +35,8 @@ describe('constants', () => {
   });
 
   describe('SD_JWT_TYPE', () => {
-    it('should be evp+sd-jwt', () => {
-      expect(SD_JWT_TYPE).toBe('evp+sd-jwt');
+    it('should be evt+jwt', () => {
+      expect(SD_JWT_TYPE).toBe('evt+jwt');
     });
   });
 

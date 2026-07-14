@@ -3,7 +3,7 @@
  *
  * Provides a configurable DNS resolver for unit tests.
  *
- * @see https://github.com/WICG/email-verification-protocol
+ * @see https://datatracker.ietf.org/doc/draft-hardt-email-verification/
  */
 
 import type { DnsResolver } from '../types.js';

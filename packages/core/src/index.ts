@@ -18,11 +18,20 @@ export {
   WELL_KNOWN_PATH,
 } from './constants.js';
 // Errors
-export { EVPError, isEVPError, toEVPError } from './errors.js';
+export { EVPError, getErrorMessage, isEVPError, toEVPError } from './errors.js';
+export type {
+  SignedIssuanceRequestOptions,
+  VerifiedHttpMessageSignature,
+} from './http-signatures.js';
+export {
+  createSignedIssuanceRequest,
+  verifyHttpMessageSignature,
+} from './http-signatures.js';
 // Types
 export type {
   DnsResolver,
   EVPErrorCode,
+  IssuanceRequest,
   IssuanceTokenHeader,
   IssuanceTokenPayload,
   IssuerConfig,
@@ -37,6 +46,8 @@ export type {
   RequestTokenVerifyResult,
   VerificationResult,
   VerifierConfig,
+  WebAuthnChallenge,
+  WebAuthnResponse,
 } from './types.js';
 
 // Utilities

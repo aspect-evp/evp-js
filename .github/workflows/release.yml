@@ -36,8 +36,17 @@ jobs:
       - name: Build
         run: pnpm build
 
-      - name: Test
-        run: pnpm test
+      - name: Lint
+        run: pnpm lint
+
+      - name: Documentation
+        run: pnpm docs:check
+
+      - name: Type check
+        run: pnpm typecheck
+
+      - name: Test coverage
+        run: pnpm test:coverage
 
       - name: Create Release PR or Publish
         id: changesets

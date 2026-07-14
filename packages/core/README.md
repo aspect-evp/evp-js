@@ -21,9 +21,10 @@ import {
   getEmailDomain,
   SD_JWT_TYPE,
   KB_JWT_TYPE,
+  createSignedIssuanceRequest,
 } from '@aspect-evp/core';
 
-// Parse SD-JWT+KB token
+// Parse EVT+KB token
 const { sdJwt, kbJwt, sdJwtForHash } = parseSDJWTKB(token);
 
 // Get email domain
@@ -31,6 +32,14 @@ const domain = getEmailDomain('user@gmail.com'); // 'gmail.com'
 
 // Hash for sd_hash claim
 const hash = await sha256(sdJwt);
+
+// Browser/test tooling: create the current JSON + RFC 9421 issuance request
+const request = await createSignedIssuanceRequest(
+  'https://issuer.example/email-verification/issuance',
+  { email: 'user@example.com' },
+  ephemeralPrivateJwk,
+  { cookie: 'session=...' }
+);
 ```
 
 ## Testing Utilities
@@ -50,7 +59,7 @@ const token = await testFlow.createToken('user@example.com', 'nonce');
 
 ## Documentation
 
-See the [full documentation](https://github.com/aspect/evp/blob/main/docs/core.md) for complete API reference.
+See the [full documentation](https://github.com/aspect-evp/evp-js/blob/main/docs/core.md) for complete API reference.
 
 ## License
 

@@ -4,17 +4,19 @@ Thank you for your interest in contributing to the Email Verification Protocol l
 
 ## Getting Started
 
+Start with the [getting-started guide](docs/GETTING-STARTED.md), then use the [development guide](docs/DEVELOPMENT.md) for the complete local workflow and [testing guide](docs/TESTING.md) for coverage policy.
+
 ### Prerequisites
 
-- Node.js 18+
-- pnpm 8+
+- Node.js 20+
+- pnpm 9+
 
 ### Setup
 
 ```bash
 # Clone the repository
 git clone https://github.com/aspect-evp/evp-js.git
-cd evp
+cd evp-js
 
 # Install dependencies
 pnpm install
@@ -35,7 +37,8 @@ evp/
 ├── packages/
 │   ├── core/       # Shared types, constants, utilities
 │   ├── issuer/     # Issuer implementation
-│   └── verifier/   # Verifier implementation
+│   ├── verifier/   # Verifier implementation
+│   └── cli/        # Developer CLI
 ├── docs/           # Documentation
 └── package.json    # Root workspace config
 ```
@@ -85,7 +88,7 @@ pnpm test
 ### Testing
 
 - Write tests for all new functionality
-- Maintain >80% code coverage
+- Maintain 100% statements, branches, functions, and lines in the production-library coverage scope
 - Use the testing utilities in `@aspect-evp/core/testing`
 
 ### Commit Messages
@@ -111,6 +114,7 @@ test(core): add edge case tests for parseSDJWTKB
 ### PR Checklist
 
 - [ ] Tests pass (`pnpm test`)
+- [ ] Coverage passes (`pnpm test:coverage`)
 - [ ] Types check (`pnpm typecheck`)
 - [ ] Lint passes (`pnpm lint`)
 - [ ] Documentation updated if needed

@@ -5,7 +5,12 @@
  */
 
 import type { KeyPair, SupportedAlgorithm } from '@aspect-evp/core';
-import { DEFAULT_ALGORITHM, EVPError, SUPPORTED_ALGORITHMS } from '@aspect-evp/core';
+import {
+  DEFAULT_ALGORITHM,
+  EVPError,
+  getErrorMessage,
+  SUPPORTED_ALGORITHMS,
+} from '@aspect-evp/core';
 import { exportJWK, generateKeyPair as joseGenerateKeyPair } from 'jose';
 
 /**
@@ -77,10 +82,7 @@ export async function generateKeyPair(
       publicKey: publicJwk as JsonWebKey,
     };
   } catch (error) {
-    throw new EVPError(
-      'server_error',
-      `Failed to generate keypair: ${error instanceof Error ? error.message : String(error)}`
-    );
+    throw new EVPError('server_error', `Failed to generate keypair: ${getErrorMessage(error)}`);
   }
 }
 

@@ -14,15 +14,29 @@ npm install @aspect-evp/issuer
 ## Usage
 
 ```typescript
-import { EmailVerificationIssuer } from '@aspect-evp/issuer';
+import { createIssuerMiddleware, EmailVerificationIssuer } from '@aspect-evp/issuer';
 
 // Initialize with your signing key
 const issuer = new EmailVerificationIssuer({
   issuer: 'mail.example.com',
   privateKey: yourPrivateKeyJWK,
   kid: '2024-01-key',
-  algorithm: 'EdDSA'
+  algorithm: 'EdDSA',
+  privateEmailSupported: true,
+  webauthnSupported: true,
 });
+
+const middleware = createIssuerMiddleware(
+  issuer,
+  async (cookie, email) => userSessionOwnsEmail(cookie, email),
+  {
+    createPrivateEmail: async (email) => createRelayAddress(email),
+    verifyDirectedEmail: async (email, directed) => relayBelongsTo(email, directed),
+    createWebAuthnChallenge: async (email) => createChallenge(email),
+    verifyWebAuthnResponse: async (email, response, cookie) =>
+      verifyAssertion(email, response, cookie),
+  }
+);
 
 // Serve /.well-known/email-verification
 app.get('/.well-known/email-verification', (req, res) => {
@@ -34,22 +48,8 @@ app.get('/email-verification/jwks', async (req, res) => {
   res.json(await issuer.getJWKS());
 });
 
-// Handle issuance requests
-app.post('/email-verification/issuance', async (req, res) => {
-  const { request_token } = req.body;
-
-  // Verify the request token from browser
-  const { email, cnf } = await issuer.verifyRequestToken(request_token);
-
-  // Verify user owns this email (your auth logic)
-  if (!userOwnsEmail(req.session.userId, email)) {
-    return res.status(403).json({ error: 'unauthorized_email' });
-  }
-
-  // Issue SD-JWT
-  const sdJwt = await issuer.issueToken(email, cnf.jwk);
-  res.json({ token: sdJwt });
-});
+// Pass a standard Web Request to middleware.handleIssuance() and serialize
+// its { status, headers, body } result with your framework adapter.
 ```
 
 ## Key Generation
@@ -72,7 +72,7 @@ console.log(keyPair.publicKey);  // Expose via JWKS
 
 ## Documentation
 
-See the [full documentation](https://github.com/aspect/evp/blob/main/docs/issuer.md) for complete API reference.
+See the [full documentation](https://github.com/aspect-evp/evp-js/blob/main/docs/issuer.md) for complete API reference.
 
 ## License
 

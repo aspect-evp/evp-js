@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { defineCommand, runMain } from 'citty';
+import packageJson from '../package.json' with { type: 'json' };
 import {
   dnsCommand,
   inspectCommand,
@@ -12,7 +13,7 @@ import {
 const main = defineCommand({
   meta: {
     name: 'evp',
-    version: '0.1.0',
+    version: packageJson.version,
     description: 'CLI tool for Email Verification Protocol (EVP) testing and development',
   },
   subCommands: {
