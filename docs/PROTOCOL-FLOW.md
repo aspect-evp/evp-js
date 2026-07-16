@@ -40,7 +40,7 @@ The verifier then retrieves `https://<issuer>/.well-known/email-verification`. T
 
 ## 2. Signed issuance request
 
-The browser sends a JSON `POST` with `Sec-Fetch-Dest: email-verification`. The HTTP Message Signature profile covers:
+The browser sends a JSON `POST` with `Sec-Fetch-Dest: email-verification`, as required by `draft-hardt-email-verification-00`. The HTTP Message Signature profile covers:
 
 - `@method`
 - `@authority`

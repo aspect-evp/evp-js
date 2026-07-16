@@ -160,6 +160,7 @@ The [documentation hub](./docs/README.md) provides a guided path through setup, 
 
 - [Getting started](./docs/GETTING-STARTED.md)
 - [Protocol flow](./docs/PROTOCOL-FLOW.md)
+- [Standards status and conformance](./docs/STANDARDS-CONFORMANCE.md)
 - [Issuer guide](./docs/issuer.md)
 - [Verifier guide](./docs/verifier.md)
 - [Testing and 100% coverage policy](./docs/TESTING.md)
@@ -199,6 +200,10 @@ pnpm test:coverage
 | Private/directed email extension points | Implemented via issuer callbacks |
 | WebAuthn fallback | Challenge and verification callbacks; credential policy remains application-owned |
 | WICG legacy `request_token` helper | Deprecated compatibility API |
+
+## Assurance and non-goals
+
+A successful verification authenticates an issuer assertion bound to the RP origin, nonce, and browser key. It does not by itself prove mailbox deliverability, classify spam or disposable domains, or replace application session policy. See [standards status and conformance](./docs/STANDARDS-CONFORMANCE.md) for the precise assurance model and the rules this implementation follows.
 
 ## Requirements
 

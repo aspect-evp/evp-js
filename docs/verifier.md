@@ -22,7 +22,7 @@ The RP must generate a cryptographically random nonce with at least 128 bits of 
 The verifier:
 
 1. Parses the `<EVT>~<KB-JWT>` presentation.
-2. Validates `typ: evt+jwt`, `alg`, and `kid`.
+2. Validates the required `typ: evt+jwt`, `alg`, and `kid` header parameters.
 3. Resolves exactly one `iss=` DNS TXT delegation for the email domain.
 4. Requires HTTPS issuer metadata and JWKS endpoints.
 5. Verifies the EVT signature and required claims.
@@ -64,3 +64,5 @@ Remote JWKS uses `jose` caching. Custom-fetch JWKS is refreshed after `jwksCache
 All parse, discovery, metadata, signature, claim, audience, nonce, and timestamp failures reject with `EVPError`. Do not treat an unverified token as an email assertion; use the application's normal email-verification flow instead.
 
 Consume the expected nonce after a successful verification and reject reuse in application session state. The verifier checks equality and freshness but does not own nonce persistence.
+
+Verification authenticates an issuer assertion; it does not prove deliverability or replace application login and abuse policy. See [standards status and conformance](STANDARDS-CONFORMANCE.md).
