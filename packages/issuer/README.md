@@ -74,6 +74,8 @@ console.log(keyPair.publicKey);  // Expose via JWKS
 
 See the [full documentation](https://github.com/aspect-evp/evp-js/blob/main/docs/issuer.md) for complete API reference.
 
+The conformance target and assurance boundaries are documented in the [standards status guide](https://github.com/aspect-evp/evp-js/blob/main/docs/STANDARDS-CONFORMANCE.md).
+
 ## License
 
 MIT

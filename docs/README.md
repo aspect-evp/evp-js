@@ -17,6 +17,7 @@ This documentation is organized as a guided path: start with the protocol, choos
 | Guide | Use it when you need to… |
 |---|---|
 | [Architecture](ARCHITECTURE.md) | Understand package boundaries, trust boundaries, and data flow. |
+| [Standards status](STANDARDS-CONFORMANCE.md) | Understand the conformance target, assurance boundaries, and unresolved upstream differences. |
 | [Configuration](CONFIGURATION.md) | Configure issuer and verifier instances safely. |
 | [Testing](TESTING.md) | Run, extend, and interpret the test and coverage suite. |
 | [Development](DEVELOPMENT.md) | Build, lint, type-check, and prepare a pull request. |

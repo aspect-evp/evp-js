@@ -31,8 +31,8 @@
     "format": "biome format --write .",
     "clean": "pnpm -r clean && rm -rf node_modules",
     "typecheck": "pnpm -r typecheck",
-    "security:audit": "pnpm audit --audit-level=high",
-    "security:audit:prod": "pnpm audit --prod --audit-level=moderate",
+    "security:audit": "pnpm --package=@pnpm/exe@11.13.1 dlx pnpm --pm-on-fail=ignore audit --audit-level=high",
+    "security:audit:prod": "pnpm --package=@pnpm/exe@11.13.1 dlx pnpm --pm-on-fail=ignore audit --prod --audit-level=moderate",
     "changeset": "changeset",
     "version": "changeset version",
     "release": "pnpm build && pnpm test && changeset publish"

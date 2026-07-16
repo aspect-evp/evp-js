@@ -49,7 +49,7 @@ const result = await middleware.handleIssuance(webRequest);
 const response = toResponse(result);
 ```
 
-The middleware requires POST, JSON, `Sec-Fetch-Dest: email-verification`, the three HTTP Message Signature headers, coverage of the required RFC 9421 components and cookies when present, a fresh signature timestamp, and a syntactically valid email.
+The middleware requires POST, JSON, `Sec-Fetch-Dest: email-verification`, the three HTTP Message Signature headers, coverage of the required RFC 9421 components and cookies when present, a fresh signature timestamp, and a syntactically valid email. Other destination values are rejected.
 
 Authentication, private-address storage/routing, and WebAuthn credential policy remain application responsibilities and are injected through callbacks.
 
@@ -71,3 +71,6 @@ If cookie authentication fails, `createWebAuthnChallenge` can return a `PublicKe
 - Return the same `authentication_required` response whether an address is absent, logged out, or not controlled by the session.
 - Normalize response timing and apply rate limiting to reduce address enumeration.
 - Validate WebAuthn challenges, origins, RP IDs, counters, and credential policy in application code; the library only delegates to callbacks.
+- Apply deliverability, domain-reputation, abuse, and session-freshness policy in application code; an EVT does not replace those controls.
+
+See [standards status and conformance](STANDARDS-CONFORMANCE.md) for the implementation's conformance policy and unresolved upstream differences.

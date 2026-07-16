@@ -67,6 +67,21 @@ describe('createIssuerMiddleware', () => {
     expect(result.body).toHaveProperty('error', 'invalid_request');
   });
 
+  it.each([
+    'emailverification',
+    'document',
+  ])('rejects the value %s because draft-00 requires email-verification', async (destination) => {
+    const middleware = createIssuerMiddleware(issuer, async () => true);
+    const request = await signedRequest();
+    const headers = new Headers(request.headers);
+    headers.set('Sec-Fetch-Dest', destination);
+    const result = await middleware.handleIssuance(new Request(request, { headers }));
+    expect(result).toMatchObject({
+      status: 400,
+      body: { error: 'invalid_request' },
+    });
+  });
+
   it('rejects missing HTTP Message Signature', async () => {
     const middleware = createIssuerMiddleware(issuer, async () => true);
     const result = await middleware.handleIssuance(
