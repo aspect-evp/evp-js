@@ -38,13 +38,13 @@
     "release": "pnpm build && pnpm test && changeset publish"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.6",
-    "@changesets/cli": "^2.31.0",
-    "@types/node": "^25.3.5",
-    "@vitest/coverage-v8": "^4.1.10",
-    "typescript": "^5.3.0",
-    "vite": "^7.3.6",
-    "vitest": "^4.1.10"
+    "@biomejs/biome": "^2.5.9",
+    "@changesets/cli": "^3.0.1",
+    "@types/node": "^26.2.0",
+    "@vitest/coverage-v8": "^4.1.11",
+    "typescript": "^7.0.2",
+    "vite": "^8.2.2",
+    "vitest": "^4.1.11"
   },
   "pnpm": {
     "overrides": {
